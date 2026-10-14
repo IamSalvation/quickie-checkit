@@ -11,6 +11,10 @@ import {
   type ContextWithProgram,
   type ContextStatus,
 } from '../../lib/api/contexts'
+import {
+  listPresenceForContext,
+  type PresenceWithParticipant,
+} from '../../lib/api/presence'
 
 function StatusBadge({ status }: { status: ContextStatus }) {
   const styles: Record<ContextStatus, string> = {
@@ -40,6 +44,21 @@ function formatDateTime(iso: string | null): string {
   })
 }
 
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const METHOD_LABELS: Record<string, string> = {
+  qr_kiosk_inperson: 'QR (kiosk)',
+  qr_kiosk_online: 'QR (online)',
+  id_entry_online: 'ID entry',
+  manual: 'Manual',
+  face_verified: 'Face verified',
+}
+
 export default function ContextDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -47,11 +66,13 @@ export default function ContextDetailPage() {
   const preset = getPreset(account?.preset)
 
   const [context, setContext] = useState<ContextWithProgram | null>(null)
+  const [attendance, setAttendance] = useState<PresenceWithParticipant[]>([])
   const [loading, setLoading] = useState(true)
+  const [attendanceLoading, setAttendanceLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
 
-  const load = useCallback(async () => {
+  const loadContext = useCallback(async () => {
     if (!id) return
     setLoading(true)
     setError(null)
@@ -61,9 +82,27 @@ export default function ContextDetailPage() {
     setLoading(false)
   }, [id])
 
+  const loadAttendance = useCallback(async () => {
+    if (!id) return
+    setAttendanceLoading(true)
+    const { data } = await listPresenceForContext(id, { limit: 500 })
+    setAttendance(data)
+    setAttendanceLoading(false)
+  }, [id])
+
   useEffect(() => {
-    load()
-  }, [load])
+    loadContext()
+    loadAttendance()
+  }, [loadContext, loadAttendance])
+
+  // Auto-refresh attendance every 5s when context is open
+  useEffect(() => {
+    if (!context || context.status !== 'open') return
+    const iv = setInterval(() => {
+      loadAttendance()
+    }, 5000)
+    return () => clearInterval(iv)
+  }, [context, loadAttendance])
 
   async function handleOpen() {
     if (!context) return
@@ -74,7 +113,7 @@ export default function ContextDetailPage() {
       alert(err)
       return
     }
-    load()
+    loadContext()
   }
 
   async function handleClose() {
@@ -86,7 +125,7 @@ export default function ContextDetailPage() {
       alert(err)
       return
     }
-    load()
+    loadContext()
   }
 
   async function handleDelete() {
@@ -135,7 +174,7 @@ export default function ContextDetailPage() {
 
   return (
     <div className="p-6">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         <Link
           to="/contexts"
           className="text-xs text-slate-500 hover:underline"
@@ -187,63 +226,139 @@ export default function ContextDetailPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-lg bg-white p-5 shadow">
-          <h2 className="text-sm font-medium text-slate-900">Details</h2>
-          <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-slate-500">{preset.labels.program}</dt>
-              <dd className="mt-0.5 text-slate-900">
-                {context.program ? (
-                  <>
-                    {context.program.name}
-                    {context.program.code && (
-                      <span className="ml-1 text-xs text-slate-500">
-                        ({context.program.code})
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-slate-400">—</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Type</dt>
-              <dd className="mt-0.5 text-slate-900">
-                {CONTEXT_TYPE_LABELS[context.type]}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Starts</dt>
-              <dd className="mt-0.5 text-slate-900">
-                {formatDateTime(context.starts_at)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Ends</dt>
-              <dd className="mt-0.5 text-slate-900">
-                {formatDateTime(context.ends_at)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Check-out</dt>
-              <dd className="mt-0.5 text-slate-900">
-                {context.checkout_enabled ? 'Allowed' : 'Not allowed'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">ID entry</dt>
-              <dd className="mt-0.5 text-slate-900">
-                {context.id_entry_enabled ? 'Allowed' : 'Not allowed'}
-              </dd>
-            </div>
-          </dl>
-        </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* Details card */}
+          <div className="rounded-lg bg-white p-5 shadow lg:col-span-1">
+            <h2 className="text-sm font-medium text-slate-900">Details</h2>
+            <dl className="mt-3 space-y-3 text-sm">
+              <div>
+                <dt className="text-slate-500">{preset.labels.program}</dt>
+                <dd className="mt-0.5 text-slate-900">
+                  {context.program ? (
+                    <>
+                      {context.program.name}
+                      {context.program.code && (
+                        <span className="ml-1 text-xs text-slate-500">
+                          ({context.program.code})
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Type</dt>
+                <dd className="mt-0.5 text-slate-900">
+                  {CONTEXT_TYPE_LABELS[context.type]}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Starts</dt>
+                <dd className="mt-0.5 text-slate-900">
+                  {formatDateTime(context.starts_at)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Ends</dt>
+                <dd className="mt-0.5 text-slate-900">
+                  {formatDateTime(context.ends_at)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Check-out</dt>
+                <dd className="mt-0.5 text-slate-900">
+                  {context.checkout_enabled ? 'Allowed' : 'Not allowed'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">ID entry</dt>
+                <dd className="mt-0.5 text-slate-900">
+                  {context.id_entry_enabled ? 'Allowed' : 'Not allowed'}
+                </dd>
+              </div>
+            </dl>
+          </div>
 
-        <div className="mt-6 rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-          <p className="text-sm text-slate-500">
-            Attendance tracking coming in Phase 4.2 — QR codes, kiosk scanning, live check-ins.
-          </p>
+          {/* Attendance card */}
+          <div className="rounded-lg bg-white p-5 shadow lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-slate-900">
+                Attendance
+              </h2>
+              <div className="flex items-center gap-3">
+                {context.status === 'open' && (
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                    Live
+                  </span>
+                )}
+                <button
+                  onClick={loadAttendance}
+                  disabled={attendanceLoading}
+                  className="text-xs text-slate-500 hover:underline disabled:opacity-50"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              {attendance.length}{' '}
+              {attendance.length === 1 ? 'check-in' : 'check-ins'}
+            </p>
+
+            <div className="mt-4 max-h-96 overflow-y-auto">
+              {attendanceLoading && attendance.length === 0 ? (
+                <div className="py-6 text-center text-sm text-slate-500">
+                  Loading...
+                </div>
+              ) : attendance.length === 0 ? (
+                <div className="rounded border border-dashed border-slate-300 p-6 text-center">
+                  <p className="text-sm text-slate-500">
+                    No check-ins yet.
+                  </p>
+                  {context.status === 'open' && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Kiosk check-ins will appear here automatically.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="pb-2 font-medium">Name</th>
+                      <th className="pb-2 font-medium">
+                        {preset.labels.participant} ID
+                      </th>
+                      <th className="pb-2 font-medium">Time</th>
+                      <th className="pb-2 font-medium">Method</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {attendance.map((r) => (
+                      <tr key={r.id}>
+                        <td className="py-2 text-slate-900">
+                          {r.participant?.full_name ?? '—'}
+                        </td>
+                        <td className="py-2 font-mono text-xs text-slate-600">
+                          {r.participant?.system_id ?? '—'}
+                        </td>
+                        <td className="py-2 text-slate-600">
+                          {formatTime(r.checked_in_at)}
+                        </td>
+                        <td className="py-2 text-slate-600">
+                          {METHOD_LABELS[r.method] ?? r.method}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end">

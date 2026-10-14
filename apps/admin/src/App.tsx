@@ -13,6 +13,8 @@ import ProgramsPage from './pages/programs/ProgramsPage'
 import ContextsPage from './pages/contexts/ContextsPage'
 import ContextDetailPage from './pages/contexts/ContextDetailPage'
 import KiosksPage from './pages/kiosks/KiosksPage'
+import KioskSetupPage from './pages/kiosk/KioskSetupPage'
+import KioskScanPage from './pages/kiosk/KioskScanPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import SettingsPage from './pages/settings/SettingsPage'
 
@@ -60,6 +62,7 @@ function PendingRoute() {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public auth */}
       <Route
         path="/login"
         element={
@@ -78,6 +81,11 @@ function AppRoutes() {
       />
       <Route path="/pending" element={<PendingRoute />} />
 
+      {/* Public kiosk (no auth) */}
+      <Route path="/kiosk/setup/:token" element={<KioskSetupPage />} />
+      <Route path="/kiosk/scan" element={<KioskScanPage />} />
+
+      {/* Protected admin app */}
       <Route
         element={
           <ProtectedRoute>

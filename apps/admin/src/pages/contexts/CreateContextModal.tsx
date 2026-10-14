@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+﻿import { useState, useEffect, type FormEvent } from 'react'
 import Modal from '../../components/ui/Modal'
 import {
   createContext,
@@ -145,7 +145,7 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
             onChange={(e) => setProgramId(e.target.value)}
             className="mt-1 block w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           >
-            <option value="">— None —</option>
+            <option value="">â€” None â€”</option>
             {programs.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -168,7 +168,7 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-slate-700">
               Starts <span className="text-slate-400">(optional)</span>

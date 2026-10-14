@@ -57,7 +57,7 @@ function PhaseBadge({ phase }: { phase: ContextPhase }) {
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return 'â€”'
+  if (!iso) return '-'
   return new Date(iso).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -176,7 +176,6 @@ export default function ContextDetailPage() {
     loadAttendance()
   }
 
-
   async function handleDelete() {
     if (!context) return
     if (
@@ -255,7 +254,7 @@ export default function ContextDetailPage() {
             to="/contexts"
             className="mt-4 inline-block text-sm text-slate-600 hover:underline"
           >
-            â† Back to {preset.labels.contexts}
+            &lt;- Back to {preset.labels.contexts}
           </Link>
         </div>
       </div>
@@ -275,7 +274,7 @@ export default function ContextDetailPage() {
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-5xl">
         <Link to="/contexts" className="text-xs text-slate-500 hover:underline">
-          â† Back to {preset.labels.contexts}
+          &lt;- Back to {preset.labels.contexts}
         </Link>
 
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -359,7 +358,7 @@ export default function ContextDetailPage() {
                       )}
                     </>
                   ) : (
-                    <span className="text-slate-400">â€”</span>
+                    <span className="text-slate-400">-</span>
                   )}
                 </dd>
               </div>
@@ -367,7 +366,7 @@ export default function ContextDetailPage() {
                 <dt className="text-slate-500">Location</dt>
                 <dd className="mt-0.5 text-slate-900">
                   {context.location ?? (
-                    <span className="text-slate-400">â€”</span>
+                    <span className="text-slate-400">-</span>
                   )}
                 </dd>
               </div>
@@ -431,8 +430,8 @@ export default function ContextDetailPage() {
 
             <p className="mt-1 text-xs text-slate-500">
               {presentCount} present
-              {absentCount > 0 && ` Â· ${absentCount} absent`}
-              {checkedOutCount > 0 && ` Â· ${checkedOutCount} checked out`}
+              {absentCount > 0 && ` - ${absentCount} absent`}
+              {checkedOutCount > 0 && ` - ${checkedOutCount} checked out`}
             </p>
 
             <div className="mt-4 max-h-96 overflow-y-auto">
@@ -461,7 +460,10 @@ export default function ContextDetailPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {attendance.map((r) => (
-                      <tr key={r.id} className={r.status === 'absent' ? 'opacity-50' : ''}>
+                      <tr
+                        key={r.id}
+                        className={r.status === 'absent' ? 'opacity-50' : ''}
+                      >
                         <td className="py-2 text-slate-900">
                           <div className="flex items-center gap-2">
                             {r.participant?.photo_url ? (
@@ -475,7 +477,7 @@ export default function ContextDetailPage() {
                                 {r.participant?.full_name.charAt(0) ?? '?'}
                               </div>
                             )}
-                            <span>{r.participant?.full_name ?? 'â€”'}</span>
+                            <span>{r.participant?.full_name ?? '-'}</span>
                             {r.status === 'absent' && (
                               <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
                                 Absent
@@ -494,7 +496,7 @@ export default function ContextDetailPage() {
                         <td className="py-2 text-slate-600">
                           {r.checked_out_at
                             ? formatTime(r.checked_out_at)
-                            : 'â€”'}
+                            : '-'}
                         </td>
                         <td className="py-2 text-slate-600">
                           {METHOD_LABELS[r.method] ?? r.method}
@@ -512,7 +514,7 @@ export default function ContextDetailPage() {
         {flagged.length > 0 && (
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
             <div className="flex items-center gap-2">
-              <span className="text-lg">âš ï¸</span>
+              <span className="text-lg font-bold text-amber-700">!</span>
               <h2 className="text-sm font-semibold text-amber-900">
                 {flagged.length} participant
                 {flagged.length === 1 ? '' : 's'} need review
@@ -531,7 +533,7 @@ export default function ContextDetailPage() {
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-slate-900 truncate">
-                      {r.participant?.full_name ?? 'â€”'}
+                      {r.participant?.full_name ?? '-'}
                     </div>
                     <div className="text-xs text-slate-600">
                       in {formatTime(r.checked_in_at)}

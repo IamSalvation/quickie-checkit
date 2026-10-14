@@ -9,6 +9,7 @@ export interface Kiosk {
   location: string | null
   device_token: string
   status: KioskStatus
+  context_id: string | null
   metadata: Record<string, unknown>
   last_seen_at: string | null
   created_at: string
@@ -40,7 +41,6 @@ export async function listKiosks(
 }
 
 function generateDeviceToken(): string {
-  // 32 url-safe chars. Uses crypto if available, else falls back.
   const bytes = new Uint8Array(24)
   crypto.getRandomValues(bytes)
   const base = btoa(String.fromCharCode(...bytes))

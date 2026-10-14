@@ -12,6 +12,7 @@ export type ContextType =
   | 'custom'
 
 export type ContextStatus = 'scheduled' | 'open' | 'closed' | 'cancelled'
+export type ContextPhase = 'in' | 'out'
 
 export interface ContextRow {
   id: string
@@ -19,9 +20,11 @@ export interface ContextRow {
   program_id: string | null
   type: ContextType
   label: string
+  location: string | null
   starts_at: string | null
   ends_at: string | null
   status: ContextStatus
+  phase: ContextPhase
   public_checkin_code: string | null
   public_checkin_open: boolean
   public_checkin_expires: string | null
@@ -32,7 +35,6 @@ export interface ContextRow {
   updated_at: string
 }
 
-// Which context types to show per preset
 export function contextTypesForPreset(
   preset: AccountPreset | undefined | null
 ): ContextType[] {
@@ -149,6 +151,7 @@ export interface CreateContextInput {
   label: string
   type: ContextType
   programId?: string | null
+  location?: string | null
   startsAt?: string | null
   endsAt?: string | null
   checkoutEnabled?: boolean
@@ -168,11 +171,13 @@ export async function createContext(
       label,
       type: input.type,
       program_id: input.programId || null,
+      location: input.location?.trim() || null,
       starts_at: input.startsAt || null,
       ends_at: input.endsAt || null,
       checkout_enabled: input.checkoutEnabled ?? false,
       id_entry_enabled: input.idEntryEnabled ?? false,
       status: 'scheduled',
+      phase: 'in',
     })
     .select('*')
     .single()
@@ -187,6 +192,7 @@ export async function updateContext(
     label?: string
     type?: ContextType
     program_id?: string | null
+    location?: string | null
     starts_at?: string | null
     ends_at?: string | null
     checkout_enabled?: boolean
@@ -204,24 +210,64 @@ export async function updateContext(
   return { data: data as ContextRow, error: null }
 }
 
+// Open a context and bind the selected kiosks to it.
+// Falls back to direct update if the RPC isn't ready.
+export async function openContextWithKiosks(
+  contextId: string,
+  kioskIds: string[]
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('open_context_with_kiosks', {
+    p_context_id: contextId,
+    p_kiosk_ids: kioskIds,
+  })
+
+  if (error) return { error: error.message }
+  return { error: null }
+}
+
+// Simple open without kiosk binding (backward compat)
 export async function openContext(
   id: string
 ): Promise<{ error: string | null }> {
   const { error } = await supabase
     .from('contexts')
-    .update({ status: 'open' })
+    .update({ status: 'open', phase: 'in' })
     .eq('id', id)
   return { error: error?.message ?? null }
 }
 
+// Flip phase in <-> out
+export async function switchContextPhase(
+  id: string
+): Promise<{ error: string | null; phase: ContextPhase | null }> {
+  const { data, error } = await supabase.rpc('switch_context_phase', {
+    p_context_id: id,
+  })
+
+  if (error) return { error: error.message, phase: null }
+
+  const result = data as { ok: boolean; phase?: ContextPhase; message?: string }
+  if (!result.ok) {
+    return { error: result.message ?? 'Could not switch phase', phase: null }
+  }
+  return { error: null, phase: result.phase ?? null }
+}
+
+// Close a context: flags open records for review + unbinds kiosks
 export async function closeContext(
   id: string
-): Promise<{ error: string | null }> {
-  const { error } = await supabase
-    .from('contexts')
-    .update({ status: 'closed' })
-    .eq('id', id)
-  return { error: error?.message ?? null }
+): Promise<{ error: string | null; flagged: number }> {
+  const { data, error } = await supabase.rpc('close_context', {
+    p_context_id: id,
+  })
+
+  if (error) return { error: error.message, flagged: 0 }
+
+  const result = data as { ok: boolean; flagged?: number; message?: string }
+  if (!result.ok) {
+    return { error: result.message ?? 'Could not close', flagged: 0 }
+  }
+  return { error: null, flagged: result.flagged ?? 0 }
 }
 
 export async function deleteContext(

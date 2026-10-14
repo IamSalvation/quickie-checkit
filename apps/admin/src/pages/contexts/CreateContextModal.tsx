@@ -25,6 +25,7 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
   const [label, setLabel] = useState('')
   const [type, setType] = useState<ContextType>(availableTypes[0] ?? 'lecture')
   const [programId, setProgramId] = useState<string>('')
+  const [location, setLocation] = useState('')
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
   const [checkoutEnabled, setCheckoutEnabled] = useState(
@@ -35,7 +36,6 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Load programs once when the modal opens (for the dropdown)
   useEffect(() => {
     if (!open || !account) return
     listPrograms(account.id, { status: 'active', limit: 200 }).then(
@@ -47,6 +47,7 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
     setLabel('')
     setType(availableTypes[0] ?? 'lecture')
     setProgramId('')
+    setLocation('')
     setStartsAt('')
     setEndsAt('')
     setCheckoutEnabled(preset.features.checkout)
@@ -73,6 +74,7 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
       label,
       type,
       programId: programId || null,
+      location: location || null,
       startsAt: startsAt ? new Date(startsAt).toISOString() : null,
       endsAt: endsAt ? new Date(endsAt).toISOString() : null,
       checkoutEnabled,
@@ -96,6 +98,7 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
       open={open}
       onClose={handleClose}
       title={`Add ${preset.labels.context}`}
+      size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -134,7 +137,8 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
 
         <div>
           <label className="block text-sm font-medium text-slate-700">
-            {preset.labels.program} <span className="text-slate-400">(optional)</span>
+            {preset.labels.program}{' '}
+            <span className="text-slate-400">(optional)</span>
           </label>
           <select
             value={programId}
@@ -149,6 +153,19 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700">
+            Location <span className="text-slate-400">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Lecture Hall A"
+            className="mt-1 block w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -177,23 +194,34 @@ export default function CreateContextModal({ open, onClose, onCreated }: Props) 
         </div>
 
         <div className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={checkoutEnabled}
               onChange={(e) => setCheckoutEnabled(e.target.checked)}
-              className="rounded border-slate-300"
+              className="mt-0.5 rounded border-slate-300"
             />
-            Allow check-out
+            <span>
+              Require check-out
+              <span className="block text-xs text-slate-500">
+                Participants scan out at the end. Unresolved records are flagged
+                for review.
+              </span>
+            </span>
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={idEntryEnabled}
               onChange={(e) => setIdEntryEnabled(e.target.checked)}
-              className="rounded border-slate-300"
+              className="mt-0.5 rounded border-slate-300"
             />
-            Allow ID entry (online fallback)
+            <span>
+              Allow ID entry (online fallback)
+              <span className="block text-xs text-slate-500">
+                Students can type their ID instead of scanning a QR.
+              </span>
+            </span>
           </label>
         </div>
 

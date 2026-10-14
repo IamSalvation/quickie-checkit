@@ -16,7 +16,7 @@ type ScreenState =
   | { kind: 'no_token' }
   | { kind: 'no_context'; message: string }
   | { kind: 'error'; message: string }
-  | { kind: 'scanning'; contextLabel: string }
+  | { kind: 'scanning'; contextLabel: string; phase: 'in' | 'out' }
   | { kind: 'result'; result: KioskCheckinResult }
 
 let audioContext: AudioContext | null = null
@@ -76,6 +76,7 @@ export default function KioskScanPage() {
   const cooldownRef = useRef<number>(0)
   const processingRef = useRef<boolean>(false)
 
+  // Periodically refresh the open-context lookup so the phase can change
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEY)
     if (!token) {
@@ -84,11 +85,18 @@ export default function KioskScanPage() {
     }
     setDeviceToken(token)
 
-    kioskLookupContext(token).then(({ data, error }) => {
+    let cancelled = false
+
+    async function lookup() {
+      if (!token) return
+      const { data, error } = await kioskLookupContext(token)
+      if (cancelled) return
+
       if (error || !data) {
         setState({ kind: 'error', message: error ?? 'Lookup failed' })
         return
       }
+
       if (!data.ok) {
         if (data.code === 'no_open_context') {
           setState({ kind: 'no_context', message: data.message })
@@ -97,13 +105,24 @@ export default function KioskScanPage() {
         }
         return
       }
+
       setState({
         kind: 'scanning',
         contextLabel: data.context?.label ?? 'Session',
+        phase: data.context?.phase === 'out' ? 'out' : 'in',
       })
-    })
+    }
+
+    lookup()
+    const iv = setInterval(lookup, 8000)
+
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
   }, [])
 
+  // Camera + scan loop, active only while in scanning state
   useEffect(() => {
     if (state.kind !== 'scanning') return
     let cancelled = false
@@ -209,8 +228,7 @@ export default function KioskScanPage() {
         return
       }
 
-      // If check-in succeeded, capture + upload a selfie.
-      // Path convention (matches ClockIt): {participant_id}/{timestamp}.jpg
+      // Capture selfie for check-ins only
       if (
         data.ok &&
         data.code === 'checked_in' &&
@@ -246,8 +264,6 @@ export default function KioskScanPage() {
                 if (urlData?.publicUrl) {
                   await updatePresencePhoto(data.record.id, urlData.publicUrl)
                 }
-              } else {
-                console.warn('[Kiosk] Selfie upload failed:', uploadErr)
               }
             }
           }
@@ -258,7 +274,10 @@ export default function KioskScanPage() {
 
       setState({ kind: 'result', result: data })
 
-      if (data.ok && data.code === 'checked_in') {
+      if (
+        data.ok &&
+        (data.code === 'checked_in' || data.code === 'checked_out')
+      ) {
         playSuccessChime()
       } else {
         playErrorBuzz()
@@ -270,6 +289,7 @@ export default function KioskScanPage() {
             ? {
                 kind: 'scanning',
                 contextLabel: s.result.context?.label ?? '',
+                phase: 'in',
               }
             : s
         )
@@ -355,6 +375,9 @@ export default function KioskScanPage() {
                 Open session
               </div>
               <div className="text-lg font-semibold">{state.contextLabel}</div>
+              <div className="mt-1 inline-block rounded-full bg-slate-800 px-3 py-1 text-[10px] uppercase tracking-wider text-slate-300">
+                {state.phase === 'in' ? 'Check-in' : 'Check-out'}
+              </div>
             </div>
             <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] shadow-2xl">
               <video
@@ -408,6 +431,33 @@ export default function KioskScanPage() {
               </>
             )}
 
+            {state.result.code === 'checked_out' && (
+              <>
+                {state.result.participant?.photo_url ? (
+                  <img
+                    src={state.result.participant.photo_url}
+                    alt={state.result.participant.full_name}
+                    className="mx-auto h-32 w-32 rounded-full object-cover border-4 border-blue-400 shadow-2xl"
+                  />
+                ) : (
+                  <div className="mx-auto h-32 w-32 rounded-full bg-blue-500/20 border-4 border-blue-400 flex items-center justify-center text-5xl">
+                    ⏱
+                  </div>
+                )}
+                <div className="mt-4 text-2xl font-bold text-blue-400">
+                  {state.result.participant?.full_name}
+                </div>
+                <div className="mt-1 text-sm text-slate-400">
+                  Checked out at{' '}
+                  {state.result.record?.checked_out_at
+                    ? new Date(
+                        state.result.record.checked_out_at
+                      ).toLocaleTimeString()
+                    : '—'}
+                </div>
+              </>
+            )}
+
             {state.result.code === 'already_checked_in' && (
               <>
                 {state.result.participant?.photo_url ? (
@@ -430,14 +480,29 @@ export default function KioskScanPage() {
               </>
             )}
 
-            {!state.result.ok && (
+            {state.result.code === 'not_checked_in' && (
               <>
-                <div className="text-6xl">✕</div>
+                <div className="mx-auto h-32 w-32 rounded-full bg-red-500/20 border-4 border-red-400 flex items-center justify-center text-5xl">
+                  ✕
+                </div>
                 <div className="mt-4 text-2xl font-bold text-red-400">
-                  {state.result.message}
+                  {state.result.participant?.full_name}
+                </div>
+                <div className="mt-1 text-sm text-slate-400">
+                  You haven't checked in for this session.
                 </div>
               </>
             )}
+
+            {!state.result.ok &&
+              state.result.code !== 'not_checked_in' && (
+                <>
+                  <div className="text-6xl">✕</div>
+                  <div className="mt-4 text-2xl font-bold text-red-400">
+                    {state.result.message}
+                  </div>
+                </>
+              )}
           </div>
         )}
       </main>

@@ -4,8 +4,10 @@ import jsQR from 'jsqr'
 import {
   kioskCheckin,
   kioskLookupContext,
+  updatePresencePhoto,
   type KioskCheckinResult,
 } from '../../lib/api/presence'
+import { supabase } from '../../lib/supabase'
 
 const STORAGE_KEY = 'checkit_kiosk_device_token'
 
@@ -17,7 +19,6 @@ type ScreenState =
   | { kind: 'scanning'; contextLabel: string }
   | { kind: 'result'; result: KioskCheckinResult }
 
-// Shared AudioContext so we don't create a new one on every beep.
 let audioContext: AudioContext | null = null
 
 function getAudioContext(): AudioContext | null {
@@ -72,11 +73,9 @@ export default function KioskScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const rafRef = useRef<number | null>(null)
   const cooldownRef = useRef<number>(0)
   const processingRef = useRef<boolean>(false)
 
-  // 1. Load token + look up open context
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEY)
     if (!token) {
@@ -105,7 +104,6 @@ export default function KioskScanPage() {
     })
   }, [])
 
-  // 2. Camera + QR scanning loop
   useEffect(() => {
     if (state.kind !== 'scanning') return
     let cancelled = false
@@ -114,7 +112,6 @@ export default function KioskScanPage() {
 
     async function startCamera() {
       try {
-        // Match ClockIt's approach: enumerate cameras, prefer "front/user/selfie"
         let selectedDeviceId: string | undefined
         try {
           const devices = await navigator.mediaDevices.enumerateDevices()
@@ -125,7 +122,7 @@ export default function KioskScanPage() {
             cameras[0]
           if (frontCamera) selectedDeviceId = frontCamera.deviceId
         } catch {
-          // ignore enumerate errors
+          // ignore
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -154,7 +151,6 @@ export default function KioskScanPage() {
           await videoRef.current.play().catch(() => {})
         }
 
-        // Wait for video dimensions
         await new Promise<void>((resolve) => {
           const check = () => {
             const v = videoRef.current
@@ -169,7 +165,6 @@ export default function KioskScanPage() {
 
         const ctx = scanCanvas.getContext('2d', { willReadFrequently: true })
 
-        // Poll QR every 150ms — matches ClockIt's interval
         timer = window.setInterval(() => {
           if (cancelled || !ctx || processingRef.current) return
           const video = videoRef.current
@@ -213,6 +208,54 @@ export default function KioskScanPage() {
         setTimeout(() => window.location.reload(), 2500)
         return
       }
+
+      // If check-in succeeded, capture + upload a selfie.
+      // Path convention (matches ClockIt): {participant_id}/{timestamp}.jpg
+      if (
+        data.ok &&
+        data.code === 'checked_in' &&
+        data.record?.id &&
+        data.participant?.id &&
+        videoRef.current &&
+        canvasRef.current
+      ) {
+        try {
+          const video = videoRef.current
+          const canvas = canvasRef.current
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          const ctx = canvas.getContext('2d')
+          if (ctx && video.videoWidth > 0) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+            const blob: Blob | null = await new Promise((resolve) =>
+              canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8)
+            )
+            if (blob) {
+              const path = `${data.participant.id}/${Date.now()}.jpg`
+              const { error: uploadErr } = await supabase.storage
+                .from('participant-photos')
+                .upload(path, blob, {
+                  contentType: 'image/jpeg',
+                  upsert: false,
+                })
+
+              if (!uploadErr) {
+                const { data: urlData } = supabase.storage
+                  .from('participant-photos')
+                  .getPublicUrl(path)
+                if (urlData?.publicUrl) {
+                  await updatePresencePhoto(data.record.id, urlData.publicUrl)
+                }
+              } else {
+                console.warn('[Kiosk] Selfie upload failed:', uploadErr)
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[Kiosk] Selfie capture error:', err)
+        }
+      }
+
       setState({ kind: 'result', result: data })
 
       if (data.ok && data.code === 'checked_in') {
@@ -240,7 +283,6 @@ export default function KioskScanPage() {
     return () => {
       cancelled = true
       if (timer) window.clearInterval(timer)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
@@ -341,7 +383,17 @@ export default function KioskScanPage() {
           <div className="max-w-md text-center">
             {state.result.code === 'checked_in' && (
               <>
-                <div className="text-6xl">✓</div>
+                {state.result.participant?.photo_url ? (
+                  <img
+                    src={state.result.participant.photo_url}
+                    alt={state.result.participant.full_name}
+                    className="mx-auto h-32 w-32 rounded-full object-cover border-4 border-emerald-400 shadow-2xl"
+                  />
+                ) : (
+                  <div className="mx-auto h-32 w-32 rounded-full bg-emerald-500/20 border-4 border-emerald-400 flex items-center justify-center text-5xl">
+                    ✓
+                  </div>
+                )}
                 <div className="mt-4 text-2xl font-bold text-emerald-400">
                   {state.result.participant?.full_name}
                 </div>
@@ -355,9 +407,20 @@ export default function KioskScanPage() {
                 </div>
               </>
             )}
+
             {state.result.code === 'already_checked_in' && (
               <>
-                <div className="text-6xl">↻</div>
+                {state.result.participant?.photo_url ? (
+                  <img
+                    src={state.result.participant.photo_url}
+                    alt={state.result.participant.full_name}
+                    className="mx-auto h-32 w-32 rounded-full object-cover border-4 border-amber-400 shadow-2xl"
+                  />
+                ) : (
+                  <div className="mx-auto h-32 w-32 rounded-full bg-amber-500/20 border-4 border-amber-400 flex items-center justify-center text-5xl">
+                    ↻
+                  </div>
+                )}
                 <div className="mt-4 text-2xl font-bold text-amber-400">
                   {state.result.participant?.full_name}
                 </div>
@@ -366,6 +429,7 @@ export default function KioskScanPage() {
                 </div>
               </>
             )}
+
             {!state.result.ok && (
               <>
                 <div className="text-6xl">✕</div>

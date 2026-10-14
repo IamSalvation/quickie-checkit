@@ -17,15 +17,66 @@ type ScreenState =
   | { kind: 'scanning'; contextLabel: string }
   | { kind: 'result'; result: KioskCheckinResult }
 
+// Shared AudioContext so we don't create a new one on every beep.
+let audioContext: AudioContext | null = null
+
+function getAudioContext(): AudioContext | null {
+  if (audioContext) return audioContext
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext
+    if (!Ctx) return null
+    audioContext = new Ctx()
+    return audioContext
+  } catch {
+    return null
+  }
+}
+
+function playTone(frequency: number, durationMs: number, volume = 0.15) {
+  const ctx = getAudioContext()
+  if (!ctx) return
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+  try {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.value = frequency
+    const now = ctx.currentTime
+    gain.gain.setValueAtTime(volume, now)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000)
+    osc.start(now)
+    osc.stop(now + durationMs / 1000 + 0.02)
+  } catch {
+    // Ignore
+  }
+}
+
+function playSuccessChime() {
+  playTone(880, 120, 0.15)
+  setTimeout(() => playTone(1320, 180, 0.15), 100)
+}
+
+function playErrorBuzz() {
+  playTone(220, 350, 0.18)
+}
+
 export default function KioskScanPage() {
   const navigate = useNavigate()
   const [state, setState] = useState<ScreenState>({ kind: 'loading' })
   const [deviceToken, setDeviceToken] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const cooldownRef = useRef<number>(0)
+  const processingRef = useRef<boolean>(false)
 
+  // 1. Load token + look up open context
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEY)
     if (!token) {
@@ -47,116 +98,153 @@ export default function KioskScanPage() {
         }
         return
       }
-      setState({ kind: 'scanning', contextLabel: data.context?.label ?? 'Session' })
+      setState({
+        kind: 'scanning',
+        contextLabel: data.context?.label ?? 'Session',
+      })
     })
   }, [])
 
+  // 2. Camera + QR scanning loop
   useEffect(() => {
     if (state.kind !== 'scanning') return
     let cancelled = false
-    let stream: MediaStream | null = null
+    let timer: number | undefined
+    const scanCanvas = document.createElement('canvas')
 
-    async function start() {
+    async function startCamera() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+        // Match ClockIt's approach: enumerate cameras, prefer "front/user/selfie"
+        let selectedDeviceId: string | undefined
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices()
+          const cameras = devices.filter((d) => d.kind === 'videoinput')
+          const frontCamera =
+            cameras.find((c) => /front|user|selfie/i.test(c.label)) ||
+            cameras.find((c) => /wide|ultra/i.test(c.label)) ||
+            cameras[0]
+          if (frontCamera) selectedDeviceId = frontCamera.deviceId
+        } catch {
+          // ignore enumerate errors
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: selectedDeviceId
+            ? {
+                deviceId: { exact: selectedDeviceId },
+                width: { ideal: 720 },
+                height: { ideal: 960 },
+              }
+            : {
+                facingMode: 'user',
+                width: { ideal: 720 },
+                height: { ideal: 960 },
+              },
           audio: false,
         })
-        if (cancelled || !videoRef.current) return
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        tick()
+
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play().catch(() => {})
+        }
+
+        // Wait for video dimensions
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            const v = videoRef.current
+            if (v && v.readyState >= 2 && v.videoWidth > 0) {
+              resolve()
+            } else {
+              setTimeout(check, 100)
+            }
+          }
+          check()
+        })
+
+        const ctx = scanCanvas.getContext('2d', { willReadFrequently: true })
+
+        // Poll QR every 150ms — matches ClockIt's interval
+        timer = window.setInterval(() => {
+          if (cancelled || !ctx || processingRef.current) return
+          const video = videoRef.current
+          if (!video || video.videoWidth === 0) return
+
+          const scale = Math.min(
+            1,
+            720 / Math.max(video.videoWidth, video.videoHeight)
+          )
+          const w = Math.round(video.videoWidth * scale)
+          const h = Math.round(video.videoHeight * scale)
+          scanCanvas.width = w
+          scanCanvas.height = h
+          ctx.drawImage(video, 0, 0, w, h)
+
+          const img = ctx.getImageData(0, 0, w, h)
+          const result = jsQR(img.data, w, h)
+          if (result?.data && deviceToken) {
+            const now = Date.now()
+            if (now - cooldownRef.current > 3000) {
+              cooldownRef.current = now
+              handleScan(result.data)
+            }
+          }
+        }, 150)
       } catch (e) {
+        if (cancelled) return
         const msg = e instanceof Error ? e.message : 'Camera unavailable'
         setState({ kind: 'error', message: `Camera: ${msg}` })
       }
     }
 
-    function tick() {
-      if (cancelled) return
-      const video = videoRef.current
-      const canvas = canvasRef.current
-      if (!video || !canvas) {
-        rafRef.current = requestAnimationFrame(tick)
-        return
-      }
-      const w = video.videoWidth
-      const h = video.videoHeight
-      if (w && h) {
-        canvas.width = w
-        canvas.height = h
-        const ctx = canvas.getContext('2d', { willReadFrequently: true })
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, w, h)
-          const imageData = ctx.getImageData(0, 0, w, h)
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert',
-          })
-          if (code && code.data && deviceToken) {
-            const now = Date.now()
-            if (now - cooldownRef.current > 3000) {
-              cooldownRef.current = now
-              handleScan(code.data)
-            }
-          }
-        }
-      }
-      rafRef.current = requestAnimationFrame(tick)
-    }
-
     async function handleScan(systemId: string) {
+      if (processingRef.current) return
+      processingRef.current = true
+
       const { data, error } = await kioskCheckin(deviceToken!, systemId)
       if (error || !data) {
+        playErrorBuzz()
         setState({ kind: 'error', message: error ?? 'Check-in failed' })
-        setTimeout(() => window.location.reload(), 2000)
+        setTimeout(() => window.location.reload(), 2500)
         return
       }
       setState({ kind: 'result', result: data })
 
-      playBeep(data.ok && data.code === 'checked_in')
+      if (data.ok && data.code === 'checked_in') {
+        playSuccessChime()
+      } else {
+        playErrorBuzz()
+      }
 
       setTimeout(() => {
         setState((s) =>
           s.kind === 'result'
-            ? { kind: 'scanning', contextLabel: s.result.context?.label ?? '' }
+            ? {
+                kind: 'scanning',
+                contextLabel: s.result.context?.label ?? '',
+              }
             : s
         )
+        processingRef.current = false
         cooldownRef.current = Date.now()
       }, 2500)
     }
 
-    start()
+    startCamera()
 
     return () => {
       cancelled = true
+      if (timer) window.clearInterval(timer)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop())
-      }
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
   }, [state.kind, deviceToken])
-
-  function playBeep(success: boolean) {
-    try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext
-      const ctx = new AudioCtx()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = success ? 880 : 320
-      gain.gain.setValueAtTime(0.1, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
-      osc.start()
-      osc.stop(ctx.currentTime + 0.2)
-      osc.onended = () => ctx.close()
-    } catch {
-      // Ignore audio errors
-    }
-  }
 
   function clearToken() {
     localStorage.removeItem(STORAGE_KEY)
@@ -165,7 +253,7 @@ export default function KioskScanPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col">
-      <header className="flex items-center justify-between px-4 py-3">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
         <div className="text-sm font-semibold">Quickie CheckIt — Kiosk</div>
         {deviceToken && (
           <button
@@ -219,28 +307,33 @@ export default function KioskScanPage() {
         )}
 
         {state.kind === 'scanning' && (
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-md">
             <div className="mb-3 text-center">
               <div className="text-xs uppercase tracking-wide text-slate-400">
                 Open session
               </div>
               <div className="text-lg font-semibold">{state.contextLabel}</div>
             </div>
-            <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] shadow-2xl">
               <video
                 ref={videoRef}
-                className="absolute inset-0 h-full w-full object-cover"
-                muted
+                autoPlay
                 playsInline
+                muted
+                className="absolute inset-0 h-full w-full object-cover"
               />
               <canvas ref={canvasRef} className="hidden" />
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="w-2/3 aspect-square border-4 border-white/70 rounded-2xl" />
               </div>
+              <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-6 pointer-events-none">
+                <div className="bg-black/70 backdrop-blur-sm px-5 py-2.5 rounded-full">
+                  <p className="text-sm text-white font-medium text-center">
+                    Hold the badge QR inside the box
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="mt-4 text-center text-sm text-slate-400">
-              Hold the badge QR inside the box.
-            </p>
           </div>
         )}
 

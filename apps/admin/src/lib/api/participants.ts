@@ -48,6 +48,20 @@ export async function listParticipants(
   return { data: (data ?? []) as Participant[], count: count ?? 0, error: null }
 }
 
+export async function getParticipant(
+  id: string
+): Promise<{ data: Participant | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) return { data: null, error: error.message }
+  if (!data) return { data: null, error: 'Not found' }
+  return { data: data as Participant, error: null }
+}
+
 export interface CreateParticipantInput {
   accountId: string
   fullName: string
@@ -62,7 +76,6 @@ export async function createParticipant(
     return { data: null, error: 'Name is required' }
   }
 
-  // 1. Get the next system_id via RPC
   const { data: sysId, error: rpcError } = await supabase.rpc(
     'next_participant_system_id',
     { p_account_id: input.accountId }
@@ -75,7 +88,6 @@ export async function createParticipant(
     }
   }
 
-  // 2. Insert the participant
   const externalId = input.externalId?.trim() || null
 
   const { data, error } = await supabase

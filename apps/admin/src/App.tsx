@@ -7,6 +7,8 @@ import Signup from './pages/auth/Signup'
 import PendingApproval from './pages/PendingApproval'
 import DashboardHome from './pages/dashboard/Home'
 import ParticipantsPage from './pages/participants/ParticipantsPage'
+import ParticipantDetailPage from './pages/participants/ParticipantDetailPage'
+import PrintBadgesPage from './pages/participants/PrintBadgesPage'
 import ProgramsPage from './pages/programs/ProgramsPage'
 import ContextsPage from './pages/contexts/ContextsPage'
 import ContextDetailPage from './pages/contexts/ContextDetailPage'
@@ -85,6 +87,8 @@ function AppRoutes() {
       >
         <Route path="/dashboard" element={<DashboardHome />} />
         <Route path="/participants" element={<ParticipantsPage />} />
+        <Route path="/participants/print" element={<PrintBadgesPage />} />
+        <Route path="/participants/:id" element={<ParticipantDetailPage />} />
         <Route path="/programs" element={<ProgramsPage />} />
         <Route path="/contexts" element={<ContextsPage />} />
         <Route path="/contexts/:id" element={<ContextDetailPage />} />

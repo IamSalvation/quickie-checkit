@@ -5,7 +5,6 @@ import {
   kioskCheckin,
   kioskLookupContext,
   type KioskCheckinResult,
-  type KioskContextResult,
 } from '../../lib/api/presence'
 
 const STORAGE_KEY = 'checkit_kiosk_device_token'
@@ -27,7 +26,6 @@ export default function KioskScanPage() {
   const rafRef = useRef<number | null>(null)
   const cooldownRef = useRef<number>(0)
 
-  // 1. Load token + look up open context
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEY)
     if (!token) {
@@ -53,7 +51,6 @@ export default function KioskScanPage() {
     })
   }, [])
 
-  // 2. Camera + QR scanning loop (only when scanning)
   useEffect(() => {
     if (state.kind !== 'scanning') return
     let cancelled = false
@@ -116,12 +113,14 @@ export default function KioskScanPage() {
       }
       setState({ kind: 'result', result: data })
 
-      // Sound: success beep / warning beep
       playBeep(data.ok && data.code === 'checked_in')
 
-      // Return to scanning after a short delay
       setTimeout(() => {
-        setState((s) => (s.kind === 'result' ? { kind: 'scanning', contextLabel: s.result.context?.label ?? '' } : s))
+        setState((s) =>
+          s.kind === 'result'
+            ? { kind: 'scanning', contextLabel: s.result.context?.label ?? '' }
+            : s
+        )
         cooldownRef.current = Date.now()
       }, 2500)
     }
@@ -139,7 +138,10 @@ export default function KioskScanPage() {
 
   function playBeep(success: boolean) {
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext
       const ctx = new AudioCtx()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -176,9 +178,7 @@ export default function KioskScanPage() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-4">
-        {state.kind === 'loading' && (
-          <p className="text-slate-400">Loading...</p>
-        )}
+        {state.kind === 'loading' && <p className="text-slate-400">Loading...</p>}
 
         {state.kind === 'no_token' && (
           <div className="max-w-md text-center">
@@ -255,7 +255,9 @@ export default function KioskScanPage() {
                 <div className="mt-1 text-sm text-slate-400">
                   Checked in at{' '}
                   {state.result.record?.checked_in_at
-                    ? new Date(state.result.record.checked_in_at).toLocaleTimeString()
+                    ? new Date(
+                        state.result.record.checked_in_at
+                      ).toLocaleTimeString()
                     : '—'}
                 </div>
               </>

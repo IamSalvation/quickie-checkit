@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import Modal from '../../components/ui/Modal'
+import PhotoCapture from '../../components/PhotoCapture'
 import { createParticipant, type Participant } from '../../lib/api/participants'
+import { uploadParticipantPhoto } from '../../lib/api/photos'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
 
@@ -19,11 +22,17 @@ export default function CreateParticipantModal({ open, onClose, onCreated }: Pro
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+
   function reset() {
     setFullName('')
     setExternalId('')
     setError(null)
     setSubmitting(false)
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoBlob(null)
+    setPhotoPreview(null)
   }
 
   function handleClose() {
@@ -45,14 +54,36 @@ export default function CreateParticipantModal({ open, onClose, onCreated }: Pro
       externalId: externalId || null,
     })
 
-    setSubmitting(false)
-
     if (err || !data) {
+      setSubmitting(false)
       setError(err ?? 'Could not create')
       return
     }
 
-    onCreated(data)
+    let finalParticipant = data
+    if (photoBlob) {
+      const { url, error: uploadErr } = await uploadParticipantPhoto(
+        account.id,
+        data.id,
+        photoBlob
+      )
+
+      if (uploadErr || !url) {
+        console.warn('Photo upload failed:', uploadErr)
+      } else {
+        const { data: updated } = await supabase
+          .from('participants')
+          .update({ photo_url: url })
+          .eq('id', data.id)
+          .select('*')
+          .single()
+
+        if (updated) finalParticipant = updated as Participant
+      }
+    }
+
+    setSubmitting(false)
+    onCreated(finalParticipant)
     reset()
     onClose()
   }
@@ -62,6 +93,7 @@ export default function CreateParticipantModal({ open, onClose, onCreated }: Pro
       open={open}
       onClose={handleClose}
       title={`Add ${preset.labels.participant}`}
+      size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -80,7 +112,8 @@ export default function CreateParticipantModal({ open, onClose, onCreated }: Pro
 
         <div>
           <label className="block text-sm font-medium text-slate-700">
-            {preset.labels.participant} ID <span className="text-slate-400">(optional)</span>
+            {preset.labels.participant} ID{' '}
+            <span className="text-slate-400">(optional)</span>
           </label>
           <input
             type="text"
@@ -92,6 +125,22 @@ export default function CreateParticipantModal({ open, onClose, onCreated }: Pro
           <p className="mt-1 text-xs text-slate-400">
             A {preset.labels.participant.toLowerCase()} ID will be auto-generated.
           </p>
+        </div>
+
+        <div className="pt-2">
+          <PhotoCapture
+            currentPreviewUrl={photoPreview}
+            onCapture={(blob, previewUrl) => {
+              setPhotoBlob(blob)
+              setPhotoPreview(previewUrl)
+            }}
+            onClear={() => {
+              setPhotoBlob(null)
+              setPhotoPreview(null)
+            }}
+            label="Enrollment photo"
+            hint="Optional. Shown on the kiosk when this person checks in."
+          />
         </div>
 
         {error && (

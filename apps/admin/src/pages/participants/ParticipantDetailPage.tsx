@@ -7,7 +7,13 @@ import {
   deleteParticipant,
   type Participant,
 } from '../../lib/api/participants'
+import {
+  uploadParticipantPhoto,
+  deleteParticipantPhoto,
+} from '../../lib/api/photos'
+import { supabase } from '../../lib/supabase'
 import ParticipantBadge from '../../components/badge/ParticipantBadge'
+import PhotoCapture from '../../components/PhotoCapture'
 
 export default function ParticipantDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,6 +25,11 @@ export default function ParticipantDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
+
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false)
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -51,6 +62,70 @@ export default function ParticipantDetailPage() {
     window.print()
   }
 
+  async function handleSavePhoto() {
+    if (!account || !participant || !photoBlob) return
+    setPhotoError(null)
+    setWorking(true)
+
+    const { url, error: uploadErr } = await uploadParticipantPhoto(
+      account.id,
+      participant.id,
+      photoBlob
+    )
+
+    if (uploadErr || !url) {
+      setWorking(false)
+      setPhotoError(uploadErr ?? 'Upload failed')
+      return
+    }
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('participants')
+      .update({ photo_url: url })
+      .eq('id', participant.id)
+      .select('*')
+      .single()
+
+    setWorking(false)
+
+    if (updateErr || !updated) {
+      setPhotoError(updateErr?.message ?? 'Could not save')
+      return
+    }
+
+    setParticipant(updated as Participant)
+    cancelPhotoEdit()
+  }
+
+  async function handleRemovePhoto() {
+    if (!account || !participant) return
+    if (!confirm('Remove this photo?')) return
+    setWorking(true)
+
+    await deleteParticipantPhoto(account.id, participant.id)
+
+    const { data: updated } = await supabase
+      .from('participants')
+      .update({ photo_url: null })
+      .eq('id', participant.id)
+      .select('*')
+      .single()
+
+    setWorking(false)
+
+    if (updated) {
+      setParticipant(updated as Participant)
+    }
+  }
+
+  function cancelPhotoEdit() {
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoBlob(null)
+    setPhotoPreview(null)
+    setPhotoError(null)
+    setShowPhotoCapture(false)
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -79,7 +154,6 @@ export default function ParticipantDetailPage() {
 
   return (
     <>
-      {/* Print-only styles */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -95,7 +169,7 @@ export default function ParticipantDetailPage() {
         }
       `}</style>
 
-      <div className="p-6 no-print">
+      <div className="p-4 sm:p-6 no-print">
         <div className="mx-auto max-w-4xl">
           <Link
             to="/participants"
@@ -105,15 +179,29 @@ export default function ParticipantDetailPage() {
           </Link>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {participant.full_name}
-              </h1>
-              <p className="mt-1 font-mono text-xs text-slate-500">
-                {participant.system_id}
-              </p>
+            <div className="flex items-center gap-4">
+              {participant.photo_url ? (
+                <img
+                  src={participant.photo_url}
+                  alt={participant.full_name}
+                  className="h-16 w-16 rounded-full object-cover border-2 border-slate-200"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-slate-100 border-2 border-slate-200 flex items-center justify-center text-slate-400 text-xl font-medium">
+                  {participant.full_name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {participant.full_name}
+                </h1>
+                <p className="mt-1 font-mono text-xs text-slate-500">
+                  {participant.system_id}
+                </p>
+              </div>
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handlePrint}
                 className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
@@ -142,7 +230,9 @@ export default function ParticipantDetailPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">{preset.labels.participant} ID</dt>
+                  <dt className="text-slate-500">
+                    {preset.labels.participant} ID
+                  </dt>
                   <dd className="mt-0.5 font-mono text-xs text-slate-900">
                     {participant.system_id}
                   </dd>
@@ -164,36 +254,120 @@ export default function ParticipantDetailPage() {
               </dl>
             </div>
 
-            {/* Right: badge preview */}
+            {/* Right: badge preview + photo editor */}
             <div className="rounded-lg bg-white p-5 shadow">
-              <h2 className="text-sm font-medium text-slate-900">
-                Badge preview
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                This is what will print.
-              </p>
-              <div className="mt-3">
-                <ParticipantBadge
-                  participant={participant}
-                  accountName={account?.name ?? ''}
-                />
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-slate-900">
+                  Enrollment photo
+                </h2>
+                {!showPhotoCapture && (
+                  <button
+                    onClick={() => setShowPhotoCapture(true)}
+                    className="text-xs text-slate-600 hover:underline"
+                  >
+                    {participant.photo_url ? 'Replace' : 'Add photo'}
+                  </button>
+                )}
               </div>
+
+              {!showPhotoCapture ? (
+                <>
+                  {participant.photo_url ? (
+                    <div className="mt-3 space-y-2">
+                      <img
+                        src={participant.photo_url}
+                        alt={participant.full_name}
+                        className="w-full max-w-xs rounded-md border border-slate-300"
+                      />
+                      <button
+                        onClick={handleRemovePhoto}
+                        disabled={working}
+                        className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+                      >
+                        Remove photo
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded border border-dashed border-slate-300 p-6 text-center">
+                      <p className="text-sm text-slate-500">No photo yet.</p>
+                      <button
+                        onClick={() => setShowPhotoCapture(true)}
+                        className="mt-3 rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                      >
+                        Take photo
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  <PhotoCapture
+                    currentPreviewUrl={photoPreview}
+                    onCapture={(blob, previewUrl) => {
+                      setPhotoBlob(blob)
+                      setPhotoPreview(previewUrl)
+                    }}
+                    onClear={() => {
+                      setPhotoBlob(null)
+                      setPhotoPreview(null)
+                    }}
+                    label="New photo"
+                    hint="Take a new photo or cancel to keep the existing one."
+                  />
+
+                  {photoError && (
+                    <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                      {photoError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={cancelPhotoEdit}
+                      disabled={working}
+                      className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSavePhoto}
+                      disabled={working || !photoBlob}
+                      className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      {working ? 'Saving...' : 'Save photo'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Badge preview (for printing) */}
+          <div className="mt-6 rounded-lg bg-white p-5 shadow">
+            <h2 className="text-sm font-medium text-slate-900">
+              Badge preview
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              This is what will print.
+            </p>
+            <div className="mt-3 max-w-xs">
+              <ParticipantBadge
+                participant={participant}
+                accountName={account?.name ?? ''}
+              />
             </div>
           </div>
 
           <div className="mt-6 rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center">
             <p className="text-sm text-slate-500">
-              Attendance history coming in Phase 4.2b.
+              Attendance history coming in a later phase.
             </p>
           </div>
         </div>
       </div>
 
       {/* Print-only badge (hidden on screen) */}
-      <div
-        className="print-badge"
-        style={{ display: 'none' }}
-      >
+      <div className="print-badge" style={{ display: 'none' }}>
         <div className="hidden print:block">
           <ParticipantBadge
             participant={participant}

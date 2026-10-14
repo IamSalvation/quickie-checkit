@@ -21,6 +21,7 @@ export interface PresenceRecord {
   mode: PresenceMode
   verified: boolean
   face_score: number | null
+  photo_url: string | null
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -32,6 +33,7 @@ export interface PresenceWithParticipant extends PresenceRecord {
     full_name: string
     system_id: string
     external_id: string | null
+    photo_url: string | null
   } | null
 }
 
@@ -48,7 +50,7 @@ export async function listPresenceForContext(
   const { data, count, error } = await supabase
     .from('presence_records')
     .select(
-      '*, participant:participants(id, full_name, system_id, external_id)',
+      '*, participant:participants(id, full_name, system_id, external_id, photo_url)',
       { count: 'exact' }
     )
     .eq('context_id', contextId)
@@ -70,10 +72,6 @@ export async function listPresenceForContext(
   return { data: rows, count: count ?? 0, error: null }
 }
 
-/**
- * Called by the kiosk page (public, no login).
- * Uses the security-definer RPC kiosk_checkin.
- */
 export interface KioskCheckinResult {
   ok: boolean
   code:
@@ -88,6 +86,7 @@ export interface KioskCheckinResult {
     id: string
     full_name: string
     system_id: string
+    photo_url: string | null
   }
   record?: {
     id: string
@@ -130,4 +129,15 @@ export async function kioskLookupContext(
 
   if (error) return { data: null, error: error.message }
   return { data: data as KioskContextResult, error: null }
+}
+
+export async function updatePresencePhoto(
+  recordId: string,
+  photoUrl: string
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('presence_records')
+    .update({ photo_url: photoUrl })
+    .eq('id', recordId)
+  return { error: error?.message ?? null }
 }

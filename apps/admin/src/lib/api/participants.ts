@@ -7,6 +7,7 @@ export interface Participant {
   full_name: string
   system_id: string
   external_id: string | null
+  photo_url: string | null
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string

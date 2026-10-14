@@ -9,6 +9,7 @@ import DashboardHome from './pages/dashboard/Home'
 import ParticipantsPage from './pages/participants/ParticipantsPage'
 import ProgramsPage from './pages/programs/ProgramsPage'
 import ContextsPage from './pages/contexts/ContextsPage'
+import ContextDetailPage from './pages/contexts/ContextDetailPage'
 import KiosksPage from './pages/kiosks/KiosksPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import SettingsPage from './pages/settings/SettingsPage'
@@ -57,7 +58,6 @@ function PendingRoute() {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route
         path="/login"
         element={
@@ -76,7 +76,6 @@ function AppRoutes() {
       />
       <Route path="/pending" element={<PendingRoute />} />
 
-      {/* Protected — wrapped in AppShell */}
       <Route
         element={
           <ProtectedRoute>
@@ -88,12 +87,12 @@ function AppRoutes() {
         <Route path="/participants" element={<ParticipantsPage />} />
         <Route path="/programs" element={<ProgramsPage />} />
         <Route path="/contexts" element={<ContextsPage />} />
+        <Route path="/contexts/:id" element={<ContextDetailPage />} />
         <Route path="/kiosks" element={<KiosksPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
-      {/* Fallbacks */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

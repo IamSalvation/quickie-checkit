@@ -156,14 +156,21 @@ export default function ParticipantDetailPage() {
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .print-badge, .print-badge * { visibility: visible; }
+          @page {
+            size: 3.5in 4.5in;
+            margin: 0.15in;
+          }
+          body * { visibility: hidden !important; }
+          .print-badge,
+          .print-badge * { visibility: visible !important; }
           .print-badge {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 3.5in;
-            height: 4.5in;
+            display: block !important;
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 3.2in !important;
+            height: 4.2in !important;
+            background: white !important;
           }
           .no-print { display: none !important; }
         }
@@ -219,7 +226,6 @@ export default function ParticipantDetailPage() {
           </div>
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {/* Left: details */}
             <div className="rounded-lg bg-white p-5 shadow">
               <h2 className="text-sm font-medium text-slate-900">Details</h2>
               <dl className="mt-3 space-y-3 text-sm">
@@ -254,7 +260,6 @@ export default function ParticipantDetailPage() {
               </dl>
             </div>
 
-            {/* Right: badge preview + photo editor */}
             <div className="rounded-lg bg-white p-5 shadow">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-slate-900">
@@ -342,7 +347,6 @@ export default function ParticipantDetailPage() {
             </div>
           </div>
 
-          {/* Badge preview (for printing) */}
           <div className="mt-6 rounded-lg bg-white p-5 shadow">
             <h2 className="text-sm font-medium text-slate-900">
               Badge preview
@@ -366,15 +370,13 @@ export default function ParticipantDetailPage() {
         </div>
       </div>
 
-      {/* Print-only badge (hidden on screen) */}
+      {/* Print-only badge — rendered on-page but hidden on screen via CSS */}
       <div className="print-badge" style={{ display: 'none' }}>
-        <div className="hidden print:block">
-          <ParticipantBadge
-            participant={participant}
-            accountName={account?.name ?? ''}
-            forPrint
-          />
-        </div>
+        <ParticipantBadge
+          participant={participant}
+          accountName={account?.name ?? ''}
+          forPrint
+        />
       </div>
     </>
   )

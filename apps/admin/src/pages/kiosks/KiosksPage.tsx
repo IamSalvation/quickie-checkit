@@ -126,7 +126,7 @@ export default function KiosksPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -173,48 +173,43 @@ export default function KiosksPage() {
               </p>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Label</th>
-                  <th className="px-4 py-3 font-medium">Location</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Last seen</th>
-                  <th className="px-4 py-3 font-medium">Device token</th>
-                  <th className="px-4 py-3 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <>
+              {/* Mobile cards */}
+              <ul className="divide-y divide-slate-100 sm:hidden">
                 {kiosks.map((k) => {
                   const revealed = revealedTokens.has(k.id)
                   const setupUrl = buildSetupUrl(k.device_token)
                   return (
-                    <tr key={k.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-slate-900">{k.label}</td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {k.location ?? <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
+                    <li key={k.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-slate-900">{k.label}</div>
+                          {k.location && (
+                            <div className="text-xs text-slate-500">{k.location}</div>
+                          )}
+                        </div>
                         {k.status === 'active' ? (
-                          <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          <span className="shrink-0 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                             Active
                           </span>
                         ) : (
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                             Revoked
                           </span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500">
-                        {formatDateTime(k.last_seen_at)}
-                      </td>
-                      <td className="px-4 py-3">
+                      </div>
+
+                      <div className="text-xs text-slate-500">
+                        Last seen: {formatDateTime(k.last_seen_at)}
+                      </div>
+
+                      <div>
                         {revealed ? (
-                          <div className="flex flex-col gap-1">
-                            <code className="font-mono text-[10px] text-slate-600 break-all">
+                          <div className="space-y-1">
+                            <code className="block break-all font-mono text-[10px] text-slate-600">
                               {setupUrl}
                             </code>
-                            <div className="flex gap-2 text-[10px]">
+                            <div className="flex gap-3 text-xs">
                               <button
                                 onClick={() => copyToClipboard(setupUrl)}
                                 className="text-slate-600 hover:underline"
@@ -245,37 +240,143 @@ export default function KiosksPage() {
                             Reveal setup URL
                           </button>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="inline-flex gap-3 text-xs">
-                          {k.status === 'active' ? (
-                            <button
-                              onClick={() => handleRevoke(k)}
-                              className="text-slate-600 hover:underline"
-                            >
-                              Revoke
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleRestore(k)}
-                              className="text-emerald-700 hover:underline"
-                            >
-                              Restore
-                            </button>
-                          )}
+                      </div>
+
+                      <div className="flex gap-3 text-xs pt-1">
+                        {k.status === 'active' ? (
                           <button
-                            onClick={() => handleDelete(k)}
-                            className="text-red-600 hover:underline"
+                            onClick={() => handleRevoke(k)}
+                            className="text-slate-600 hover:underline"
                           >
-                            Delete
+                            Revoke
                           </button>
-                        </div>
-                      </td>
-                    </tr>
+                        ) : (
+                          <button
+                            onClick={() => handleRestore(k)}
+                            className="text-emerald-700 hover:underline"
+                          >
+                            Restore
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(k)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
                   )
                 })}
-              </tbody>
-            </table>
+              </ul>
+
+              {/* Desktop table */}
+              <div className="hidden sm:block">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Label</th>
+                      <th className="px-4 py-3 font-medium">Location</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3 font-medium">Last seen</th>
+                      <th className="px-4 py-3 font-medium">Device token</th>
+                      <th className="px-4 py-3 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {kiosks.map((k) => {
+                      const revealed = revealedTokens.has(k.id)
+                      const setupUrl = buildSetupUrl(k.device_token)
+                      return (
+                        <tr key={k.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-slate-900">{k.label}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {k.location ?? <span className="text-slate-300">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {k.status === 'active' ? (
+                              <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                Revoked
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-500">
+                            {formatDateTime(k.last_seen_at)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {revealed ? (
+                              <div className="flex flex-col gap-1">
+                                <code className="font-mono text-[10px] text-slate-600 break-all">
+                                  {setupUrl}
+                                </code>
+                                <div className="flex gap-2 text-[10px]">
+                                  <button
+                                    onClick={() => copyToClipboard(setupUrl)}
+                                    className="text-slate-600 hover:underline"
+                                  >
+                                    Copy
+                                  </button>
+                                  <a
+                                    href={setupUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-slate-600 hover:underline"
+                                  >
+                                    Open
+                                  </a>
+                                  <button
+                                    onClick={() => toggleToken(k.id)}
+                                    className="text-slate-600 hover:underline"
+                                  >
+                                    Hide
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => toggleToken(k.id)}
+                                className="text-xs text-slate-500 hover:underline"
+                              >
+                                Reveal setup URL
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="inline-flex gap-3 text-xs">
+                              {k.status === 'active' ? (
+                                <button
+                                  onClick={() => handleRevoke(k)}
+                                  className="text-slate-600 hover:underline"
+                                >
+                                  Revoke
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleRestore(k)}
+                                  className="text-emerald-700 hover:underline"
+                                >
+                                  Restore
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDelete(k)}
+                                className="text-red-600 hover:underline"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
@@ -293,9 +394,7 @@ export default function KiosksPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Label
-            </label>
+            <label className="block text-sm font-medium text-slate-700">Label</label>
             <input
               type="text"
               required
@@ -362,7 +461,7 @@ export default function KiosksPage() {
                 {buildSetupUrl(justCreated.device_token)}
               </code>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => copyToClipboard(buildSetupUrl(justCreated.device_token))}
                 className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"

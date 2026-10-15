@@ -27,9 +27,16 @@ const DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   scoreThreshold: 0.5,
 })
 
-export async function extractEmbedding(
+export const MIN_FACE_HEIGHT_RATIO = 0.2
+
+export interface ExtractEmbeddingResult {
+  embedding: number[]
+  faceHeightRatio: number
+}
+
+export async function extractEmbeddingWithMeta(
   image: HTMLImageElement
-): Promise<number[] | null> {
+): Promise<ExtractEmbeddingResult | null> {
   await loadFaceModels()
 
   const detection = await faceapi
@@ -38,7 +45,23 @@ export async function extractEmbedding(
     .withFaceDescriptor()
 
   if (!detection) return null
-  return Array.from(detection.descriptor)
+
+  const box = detection.detection.box
+  const faceHeightRatio = box.height / image.height
+
+  return {
+    embedding: Array.from(detection.descriptor),
+    faceHeightRatio,
+  }
+}
+
+export async function extractEmbedding(
+  image: HTMLImageElement
+): Promise<number[] | null> {
+  const result = await extractEmbeddingWithMeta(image)
+  if (!result) return null
+  if (result.faceHeightRatio < MIN_FACE_HEIGHT_RATIO) return null
+  return result.embedding
 }
 
 export async function extractAllEmbeddings(

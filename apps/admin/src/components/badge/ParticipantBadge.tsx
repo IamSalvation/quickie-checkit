@@ -16,77 +16,52 @@ export default function ParticipantBadge({
     <div
       className={
         forPrint
-          ? 'flex h-full w-full flex-col items-stretch bg-white'
-          : 'flex w-full max-w-sm flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm'
+          ? 'flex h-full w-full flex-col items-center justify-between bg-white p-2'
+          : 'flex w-full max-w-sm flex-col items-center rounded-lg border border-slate-200 bg-white p-4 shadow-sm'
       }
     >
-      <div className="w-full text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">
+      <div className="w-full text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">
         {accountName}
       </div>
 
-      <div className="mt-2 flex flex-1 items-center gap-3">
-        <div className="shrink-0">
-          {participant.photo_url ? (
-            <img
-              src={participant.photo_url}
-              alt=""
-              className={
-                forPrint
-                  ? 'h-[28mm] w-[22mm] rounded border border-slate-300 object-cover'
-                  : 'h-20 w-16 rounded border border-slate-300 object-cover'
-              }
-            />
-          ) : (
-            <div
-              className={
-                (forPrint ? 'h-[28mm] w-[22mm]' : 'h-20 w-16') +
-                ' rounded border border-slate-300 bg-slate-100 flex items-center justify-center text-slate-400 font-semibold text-xl'
-              }
-            >
-              {participant.full_name.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
+      <div className="mt-2 flex items-center justify-center">
+        <QRCodeSVG
+          value={participant.system_id}
+          size={forPrint ? 130 : 140}
+          level="M"
+        />
+      </div>
 
-        <div className="shrink-0">
-          <QRCodeSVG
-            value={participant.system_id}
-            size={forPrint ? 90 : 96}
-            level="M"
-          />
+      <div className="mt-2 w-full text-center">
+        <div
+          className={
+            forPrint
+              ? 'text-[11px] font-bold text-slate-900 leading-tight'
+              : 'text-sm font-semibold text-slate-900 leading-tight'
+          }
+        >
+          {participant.full_name}
         </div>
-
-        <div className="min-w-0 flex-1">
+        <div
+          className={
+            forPrint
+              ? 'mt-0.5 font-mono text-[9px] text-slate-600'
+              : 'mt-0.5 font-mono text-[10px] text-slate-600'
+          }
+        >
+          {participant.system_id}
+        </div>
+        {participant.external_id && (
           <div
             className={
               forPrint
-                ? 'text-[11px] font-bold text-slate-900 leading-tight'
-                : 'text-sm font-semibold text-slate-900 leading-tight'
+                ? 'mt-0.5 text-[9px] text-slate-500'
+                : 'mt-0.5 text-[10px] text-slate-500'
             }
           >
-            {participant.full_name}
+            {participant.external_id}
           </div>
-          <div
-            className={
-              forPrint
-                ? 'mt-1 font-mono text-[9px] text-slate-600'
-                : 'mt-0.5 font-mono text-[10px] text-slate-600'
-            }
-          >
-            {participant.system_id}
-          </div>
-          {participant.external_id && (
-            <div
-              className={
-                forPrint
-                  ? 'mt-0.5 text-[9px] text-slate-500'
-                  : 'mt-0.5 text-[10px] text-slate-500'
-              }
-            >
-              {participant.external_id}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {forPrint && (

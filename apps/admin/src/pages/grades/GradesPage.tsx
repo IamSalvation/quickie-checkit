@@ -41,7 +41,6 @@ export default function GradesPage() {
 
   const [saving, setSaving] = useState(false)
   const [recalculating, setRecalculating] = useState(false)
-  const [recalcOne, setRecalcOne] = useState<string | null>(null)
 
   // ---------- Loaders ----------
 
@@ -120,7 +119,11 @@ export default function GradesPage() {
 
   // ---------- Draft handlers ----------
 
-  function handleScoreDraft(participantId: string, componentId: string, value: string) {
+  function handleScoreDraft(
+    participantId: string,
+    componentId: string,
+    value: string
+  ) {
     const key = participantId + '|' + componentId
     setScoreDrafts((prev) => ({ ...prev, [key]: value }))
   }
@@ -229,21 +232,6 @@ export default function GradesPage() {
     setRecalculating(true)
     const { error: err } = await recomputeAllGradesRpc(selectedProgramId)
     setRecalculating(false)
-    if (err) {
-      setError(err)
-      return
-    }
-    await loadProgramData()
-  }
-
-  async function handleRecalcOne(participantId: string) {
-    if (!selectedProgramId) return
-    setRecalcOne(participantId)
-    const { error: err } = await recomputeGradeRpc(
-      participantId,
-      selectedProgramId
-    )
-    setRecalcOne(null)
     if (err) {
       setError(err)
       return
@@ -424,7 +412,6 @@ export default function GradesPage() {
                   <th className="px-3 py-2 font-medium text-right">CA</th>
                   <th className="px-3 py-2 font-medium text-right">Total</th>
                   <th className="px-3 py-2 font-medium text-center">Grade</th>
-                  <th className="px-2 py-2 font-medium text-center"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -434,7 +421,6 @@ export default function GradesPage() {
                     existingGrade?.grade_override ??
                     existingGrade?.grade ??
                     '-'
-                  const isRecalcThis = recalcOne === p.id
                   return (
                     <tr key={p.id} className="hover:bg-slate-50">
                       <td className="sticky left-0 z-10 bg-white hover:bg-slate-50 px-3 py-2 font-medium text-slate-900 whitespace-nowrap">
@@ -522,16 +508,6 @@ export default function GradesPage() {
                           {displayGrade}
                         </span>
                       </td>
-                      <td className="px-2 py-2 text-center">
-                        <button
-                          onClick={() => handleRecalcOne(p.id)}
-                          disabled={isRecalcThis}
-                          title="Recalculate this participant"
-                          className="text-xs text-slate-500 hover:text-slate-900 disabled:opacity-50"
-                        >
-                          {isRecalcThis ? '...' : 'R'}
-                        </button>
-                      </td>
                     </tr>
                   )
                 })}
@@ -542,9 +518,8 @@ export default function GradesPage() {
 
         {selectedProgramId && !loading && (
           <p className="mt-4 text-xs text-slate-400">
-            Changes save when you click Save changes. Click Recalculate all (or
-            R per participant) to force a fresh grade using the latest
-            attendance and scores.
+            Changes save when you click Save changes. Click Recalculate all to
+            force a fresh grade using the latest attendance and scores.
           </p>
         )}
       </div>

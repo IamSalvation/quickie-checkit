@@ -5,6 +5,8 @@ import AppShell from './components/layout/AppShell'
 import PlatformShell from './components/layout/PlatformShell'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import PendingApproval from './pages/PendingApproval'
 import DashboardHome from './pages/dashboard/Home'
 import ParticipantsPage from './pages/participants/ParticipantsPage'
@@ -88,6 +90,16 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        }
+      />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+
       <Route path="/pending" element={<PendingRoute />} />
 
       <Route path="/kiosk/setup/:token" element={<KioskSetupPage />} />

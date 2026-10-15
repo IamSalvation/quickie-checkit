@@ -37,6 +37,7 @@ export interface CaComponent {
   max_score: number
   weight: number
   sort_order: number
+  auto_from_attendance: boolean
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -61,6 +62,7 @@ export interface CreateCaComponentInput {
   max_score: number
   weight: number
   sort_order: number
+  auto_from_attendance?: boolean
 }
 
 export async function createCaComponent(
@@ -79,6 +81,7 @@ export async function createCaComponent(
       max_score: input.max_score,
       weight: input.weight,
       sort_order: input.sort_order,
+      auto_from_attendance: input.auto_from_attendance ?? false,
     })
     .select('*')
     .single()
@@ -94,7 +97,13 @@ export async function createCaComponent(
 
 export async function updateCaComponent(
   id: string,
-  updates: { name?: string; max_score?: number; weight?: number; sort_order?: number }
+  updates: {
+    name?: string
+    max_score?: number
+    weight?: number
+    sort_order?: number
+    auto_from_attendance?: boolean
+  }
 ): Promise<{ data: CaComponent | null; error: string | null }> {
   const { data, error } = await supabase
     .from('ca_components')
@@ -156,6 +165,17 @@ export async function upsertCaScore(
   input: UpsertCaScoreInput,
   currentUserId: string | null
 ): Promise<{ error: string | null }> {
+  if (input.score === null) {
+    // Delete the row
+    const { error } = await supabase
+      .from('ca_scores')
+      .delete()
+      .eq('participant_id', input.participantId)
+      .eq('program_id', input.programId)
+      .eq('component_id', input.componentId)
+    return { error: error?.message ?? null }
+  }
+
   const { error } = await supabase
     .from('ca_scores')
     .upsert(
@@ -244,7 +264,61 @@ export async function upsertGrade(
   return { error: error?.message ?? null }
 }
 
-// ---------- Computation ----------
+// ---------- Recompute RPCs ----------
+
+export async function recomputeGradeRpc(
+  participantId: string,
+  programId: string
+): Promise<{ error: string | null }> {
+  const { data, error } = await supabase.rpc('recompute_grade', {
+    p_participant_id: participantId,
+    p_program_id: programId,
+  })
+  if (error) return { error: error.message }
+  const result = data as { ok: boolean; message?: string }
+  if (!result.ok) return { error: result.message ?? 'Recompute failed' }
+  return { error: null }
+}
+
+export async function recomputeAllGradesRpc(
+  programId: string
+): Promise<{ error: string | null; recomputed?: number }> {
+  const { data, error } = await supabase.rpc('recompute_all_grades', {
+    p_program_id: programId,
+  })
+  if (error) return { error: error.message }
+  const result = data as { ok: boolean; recomputed?: number; message?: string }
+  if (!result.ok) return { error: result.message ?? 'Recompute failed' }
+  return { error: null, recomputed: result.recomputed }
+}
+
+// ---------- Exam max per program ----------
+
+export async function getProgramExamMax(
+  programId: string
+): Promise<{ data: number; error: string | null }> {
+  const { data, error } = await supabase
+    .from('programs')
+    .select('exam_max_score')
+    .eq('id', programId)
+    .maybeSingle()
+
+  if (error) return { data: 100, error: error.message }
+  return { data: (data?.exam_max_score ?? 100) as number, error: null }
+}
+
+export async function setProgramExamMax(
+  programId: string,
+  examMax: number
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('programs')
+    .update({ exam_max_score: examMax })
+    .eq('id', programId)
+  return { error: error?.message ?? null }
+}
+
+// ---------- Computation (client-side, kept for previews) ----------
 
 export interface ComputedGrade {
   ca_total: number

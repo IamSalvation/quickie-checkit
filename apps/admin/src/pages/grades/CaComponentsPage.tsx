@@ -16,6 +16,7 @@ interface FormState {
   max_score: string
   weight: string
   sort_order: string
+  auto_from_attendance: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -24,6 +25,7 @@ const EMPTY_FORM: FormState = {
   max_score: '',
   weight: '1',
   sort_order: '1',
+  auto_from_attendance: false,
 }
 
 export default function CaComponentsPage() {
@@ -68,6 +70,7 @@ export default function CaComponentsPage() {
       max_score: String(c.max_score),
       weight: String(c.weight),
       sort_order: String(c.sort_order),
+      auto_from_attendance: c.auto_from_attendance ?? false,
     })
     setFormError(null)
     setShowModal(true)
@@ -115,6 +118,7 @@ export default function CaComponentsPage() {
         max_score: maxScore,
         weight,
         sort_order: sortOrder,
+        auto_from_attendance: form.auto_from_attendance,
       })
       setSubmitting(false)
       if (err) {
@@ -128,6 +132,7 @@ export default function CaComponentsPage() {
         max_score: maxScore,
         weight,
         sort_order: sortOrder,
+        auto_from_attendance: form.auto_from_attendance,
       })
       setSubmitting(false)
       if (err) {
@@ -143,7 +148,9 @@ export default function CaComponentsPage() {
   async function handleDelete(c: CaComponent) {
     if (
       !confirm(
-        `Delete "${c.name}"? Any scores entered for this component will also be deleted.`
+        'Delete "' +
+          c.name +
+          '"? Any scores entered for this component will also be deleted.'
       )
     )
       return
@@ -199,7 +206,7 @@ export default function CaComponentsPage() {
               </p>
               <p className="mt-1 text-xs text-slate-400">
                 Start with something like: Test 1 (10), Test 2 (10),
-                Assignment (5), Quiz (5).
+                Assignment (5), Attendance (10, auto).
               </p>
               <button
                 onClick={openAdd}
@@ -216,6 +223,7 @@ export default function CaComponentsPage() {
                   <th className="px-4 py-3 font-medium">Max score</th>
                   <th className="px-4 py-3 font-medium">Weight</th>
                   <th className="px-4 py-3 font-medium">Order</th>
+                  <th className="px-4 py-3 font-medium">Source</th>
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -226,6 +234,15 @@ export default function CaComponentsPage() {
                     <td className="px-4 py-3 text-slate-600">{c.max_score}</td>
                     <td className="px-4 py-3 text-slate-600">{c.weight}</td>
                     <td className="px-4 py-3 text-slate-600">{c.sort_order}</td>
+                    <td className="px-4 py-3">
+                      {c.auto_from_attendance ? (
+                        <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          Auto from attendance
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500">Manual</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex gap-3 text-xs">
                         <button
@@ -254,6 +271,7 @@ export default function CaComponentsPage() {
         open={showModal}
         onClose={closeModal}
         title={form.id ? 'Edit component' : 'Add component'}
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -320,10 +338,24 @@ export default function CaComponentsPage() {
             </div>
           </div>
 
-          <p className="text-xs text-slate-500">
-            Weight multiplies the score when computing the CA total. Use 1.0 for
-            equal weighting, or 2.0 to count something double.
-          </p>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.auto_from_attendance}
+              onChange={(e) =>
+                setForm({ ...form, auto_from_attendance: e.target.checked })
+              }
+              className="mt-0.5 rounded border-slate-300"
+            />
+            <span>
+              Auto-fill from attendance
+              <span className="block text-xs text-slate-500">
+                The score is computed from the participant attendance
+                percentage. Lecturers can still override the value on the
+                Grades page.
+              </span>
+            </span>
+          </label>
 
           {formError && (
             <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">

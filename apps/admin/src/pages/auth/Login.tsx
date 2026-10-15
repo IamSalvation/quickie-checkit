@@ -26,7 +26,10 @@ export default function Login() {
       return
     }
 
-    navigate('/dashboard', { replace: true })
+    // Navigate to "/" so RootRedirect can decide:
+    // - Platform admins -> /platform
+    // - Everyone else -> /dashboard
+    navigate('/', { replace: true })
   }
 
   return (

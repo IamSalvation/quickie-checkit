@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppShell from './components/layout/AppShell'
 import PlatformShell from './components/layout/PlatformShell'
+import RootRedirect from './components/RootRedirect'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -55,7 +56,7 @@ function PublicRoute({ children }: { children: ReactNode }) {
   if (loading) return <LoadingScreen />
   if (session) {
     if (account?.status === 'pending') return <Navigate to="/pending" replace />
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/" replace />
   }
   return <>{children}</>
 }
@@ -66,7 +67,7 @@ function PendingRoute() {
   if (loading) return <LoadingScreen />
   if (!session) return <Navigate to="/login" replace />
   if (account && account.status !== 'pending') {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/" replace />
   }
   return <PendingApproval />
 }
@@ -74,6 +75,8 @@ function PendingRoute() {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<RootRedirect />} />
+
       <Route
         path="/login"
         element={
@@ -143,8 +146,7 @@ function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

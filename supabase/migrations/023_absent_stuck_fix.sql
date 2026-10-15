@@ -1,0 +1,6 @@
+-- 023_absent_stuck_fix.sql
+-- Fix: kiosk_checkin and online_checkin now look up ANY open record
+-- (not just status = 'present') to respect the presence_participant_context_unique
+-- index. If the open record has status = 'absent', the RPC returns a
+-- 'marked_absent' error instead of attempting a conflicting insert.
+-- Full RPC bodies live in Supabase (SQL editor history).

@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onClose }: SidebarProps) {
-  const { account } = useAuth()
+  const { account, operator } = useAuth()
   const preset = getPreset(account?.preset)
 
   const [unread, setUnread] = useState(0)
@@ -96,6 +96,20 @@ export default function Sidebar({ onClose }: SidebarProps) {
           </NavLink>
         ))}
       </div>
+
+      {operator?.is_platform_admin && (
+        <div className="px-3 pb-3">
+          <NavLink
+            to="/platform"
+            className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 hover:bg-amber-500/20"
+          >
+            <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-900">
+              Platform
+            </span>
+            <span>Console</span>
+          </NavLink>
+        </div>
+      )}
 
       <div className="px-4 py-3 border-t border-slate-800 text-xs text-slate-500">
         {preset.label} - {account?.status ?? '-'}

@@ -15,6 +15,7 @@ import ContextDetailPage from './pages/contexts/ContextDetailPage'
 import KiosksPage from './pages/kiosks/KiosksPage'
 import KioskSetupPage from './pages/kiosk/KioskSetupPage'
 import KioskScanPage from './pages/kiosk/KioskScanPage'
+import OnlineCheckinPage from './pages/online/OnlineCheckinPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import SettingsPage from './pages/settings/SettingsPage'
 
@@ -84,6 +85,9 @@ function AppRoutes() {
       {/* Public kiosk (no auth) */}
       <Route path="/kiosk/setup/:token" element={<KioskSetupPage />} />
       <Route path="/kiosk/scan" element={<KioskScanPage />} />
+
+      {/* Public online check-in (no auth) */}
+      <Route path="/k/:code" element={<OnlineCheckinPage />} />
 
       {/* Protected admin app */}
       <Route

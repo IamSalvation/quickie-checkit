@@ -1,0 +1,4 @@
+-- 022_online_checkin.sql
+-- Online kiosk: public check-in via a short code + student ID or QR scan.
+-- No login required. The code + expiry are the gate.
+-- Full RPC bodies live in Supabase (see SQL editor).

@@ -19,6 +19,11 @@ import {
   type PresenceWithParticipant,
 } from '../../lib/api/presence'
 import { listKiosks, type Kiosk } from '../../lib/api/kiosks'
+import {
+  openOnlineCheckin,
+  closeOnlineCheckin,
+  buildOnlineUrl,
+} from '../../lib/api/onlineCheckin'
 import OpenContextModal from './OpenContextModal'
 
 function StatusBadge({ status }: { status: ContextStatus }) {
@@ -101,6 +106,11 @@ export default function ContextDetailPage() {
   const [showOpenModal, setShowOpenModal] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
 
+  // Online check-in UI state
+  const [onlineWorking, setOnlineWorking] = useState(false)
+  const [onlineError, setOnlineError] = useState<string | null>(null)
+  const [showOnlineExpiryPicker, setShowOnlineExpiryPicker] = useState(false)
+
   const loadContext = useCallback(async () => {
     if (!id) return
     setLoading(true)
@@ -131,7 +141,6 @@ export default function ContextDetailPage() {
     loadKiosks()
   }, [loadContext, loadAttendance, loadKiosks])
 
-  // Auto-refresh attendance while open
   useEffect(() => {
     if (!context || context.status !== 'open') return
     const iv = setInterval(() => {
@@ -235,6 +244,45 @@ export default function ContextDetailPage() {
     loadAttendance()
   }
 
+  async function handleOpenOnline(minutes: number | null) {
+    if (!context) return
+    setOnlineError(null)
+    setOnlineWorking(true)
+    const { data, error: err } = await openOnlineCheckin(context.id, minutes)
+    setOnlineWorking(false)
+    setShowOnlineExpiryPicker(false)
+
+    if (err || !data?.ok) {
+      setOnlineError(err ?? data?.message ?? 'Could not open')
+      return
+    }
+
+    loadContext()
+  }
+
+  async function handleCloseOnline() {
+    if (!context) return
+    if (!confirm('Close online check-in? Students with the link will not be able to check in.')) return
+
+    setOnlineError(null)
+    setOnlineWorking(true)
+    const { error: err } = await closeOnlineCheckin(context.id)
+    setOnlineWorking(false)
+
+    if (err) {
+      setOnlineError(err)
+      return
+    }
+    loadContext()
+  }
+
+  function copyOnlineUrl(url: string) {
+    navigator.clipboard.writeText(url).then(
+      () => alert('URL copied'),
+      () => alert('Copy failed')
+    )
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -269,6 +317,15 @@ export default function ContextDetailPage() {
   const checkedOutCount = attendance.filter(
     (r) => r.checked_out_at !== null && r.status === 'present'
   ).length
+  const onlineCount = attendance.filter((r) => r.mode === 'online').length
+  const inPersonCount = attendance.filter((r) => r.mode === 'in_person').length
+
+  const onlineIsLive =
+    context.status === 'open' &&
+    context.public_checkin_open &&
+    context.public_checkin_code &&
+    (context.public_checkin_expires === null ||
+      new Date(context.public_checkin_expires) > new Date())
 
   return (
     <div className="p-4 sm:p-6">
@@ -339,6 +396,142 @@ export default function ContextDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Online kiosk card */}
+        {context.status === 'open' && (
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium text-slate-900">
+                  Online check-in
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Share this link so students can check in from their phones.
+                </p>
+              </div>
+              {onlineIsLive && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                  Live
+                </span>
+              )}
+            </div>
+
+            {onlineError && (
+              <div className="mt-3 rounded bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                {onlineError}
+              </div>
+            )}
+
+            {onlineIsLive ? (
+              <div className="mt-4 space-y-3">
+                <div className="rounded border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs uppercase tracking-wide text-slate-500">
+                    Link
+                  </div>
+                  <code className="mt-1 block break-all font-mono text-xs text-slate-800">
+                    {buildOnlineUrl(context.public_checkin_code ?? '')}
+                  </code>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                    <button
+                      onClick={() =>
+                        copyOnlineUrl(
+                          buildOnlineUrl(context.public_checkin_code ?? '')
+                        )
+                      }
+                      className="text-slate-700 hover:underline"
+                    >
+                      Copy link
+                    </button>
+                    <a
+                      href={buildOnlineUrl(context.public_checkin_code ?? '')}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-700 hover:underline"
+                    >
+                      Open
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+                  <div>
+                    <span className="font-mono font-semibold text-slate-900 text-base">
+                      {context.public_checkin_code}
+                    </span>
+                    <span className="ml-2 text-slate-400">
+                      {context.public_checkin_expires
+                        ? `expires ${new Date(context.public_checkin_expires).toLocaleTimeString()}`
+                        : 'manual close'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleCloseOnline}
+                    disabled={onlineWorking}
+                    className="rounded border border-red-300 bg-white px-3 py-1.5 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Close online
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4">
+                {!showOnlineExpiryPicker ? (
+                  <button
+                    onClick={() => setShowOnlineExpiryPicker(true)}
+                    disabled={onlineWorking}
+                    className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Open online check-in
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-700">
+                      How long should it stay open?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleOpenOnline(15)}
+                        disabled={onlineWorking}
+                        className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        15 min
+                      </button>
+                      <button
+                        onClick={() => handleOpenOnline(30)}
+                        disabled={onlineWorking}
+                        className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        30 min
+                      </button>
+                      <button
+                        onClick={() => handleOpenOnline(60)}
+                        disabled={onlineWorking}
+                        className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        60 min
+                      </button>
+                      <button
+                        onClick={() => handleOpenOnline(null)}
+                        disabled={onlineWorking}
+                        className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        Manual
+                      </button>
+                      <button
+                        onClick={() => setShowOnlineExpiryPicker(false)}
+                        disabled={onlineWorking}
+                        className="rounded px-3 py-2 text-sm text-slate-500 hover:underline disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           {/* Details */}
@@ -432,6 +625,8 @@ export default function ContextDetailPage() {
               {presentCount} present
               {absentCount > 0 && ` - ${absentCount} absent`}
               {checkedOutCount > 0 && ` - ${checkedOutCount} checked out`}
+              {onlineCount > 0 && ` - ${onlineCount} online`}
+              {inPersonCount > 0 && ` - ${inPersonCount} in-person`}
             </p>
 
             <div className="mt-4 max-h-96 overflow-y-auto">
@@ -444,7 +639,7 @@ export default function ContextDetailPage() {
                   <p className="text-sm text-slate-500">No check-ins yet.</p>
                   {context.status === 'open' && (
                     <p className="mt-1 text-xs text-slate-400">
-                      Kiosk check-ins will appear here automatically.
+                      Kiosk and online check-ins will appear here automatically.
                     </p>
                   )}
                 </div>
@@ -486,6 +681,11 @@ export default function ContextDetailPage() {
                             {r.needs_review && (
                               <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
                                 Review
+                              </span>
+                            )}
+                            {r.mode === 'online' && (
+                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                                Online
                               </span>
                             )}
                           </div>

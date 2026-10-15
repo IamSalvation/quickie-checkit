@@ -16,6 +16,13 @@ export default function PrintBadgesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    document.body.classList.add('printing-badge')
+    return () => {
+      document.body.classList.remove('printing-badge')
+    }
+  }, [])
+
   const load = useCallback(async () => {
     if (!account) return
     setLoading(true)
@@ -61,14 +68,7 @@ export default function PrintBadgesPage() {
     <>
       <style>{`
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-          body * { visibility: hidden; }
-          .printable-badge,
-          .printable-badge * { visibility: visible; }
-          .printable-badge {
+          body.printing-badge .printable-badge {
             position: relative !important;
             page-break-inside: avoid;
             page-break-after: auto;
@@ -82,7 +82,7 @@ export default function PrintBadgesPage() {
             vertical-align: top;
             margin: 2mm;
           }
-          .badge-grid {
+          body.printing-badge .badge-grid {
             display: block;
             position: absolute;
             left: 0;

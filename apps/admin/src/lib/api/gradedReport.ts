@@ -41,7 +41,6 @@ export async function fetchGradedReport(
 ): Promise<{ data: GradedReport | null; error: string | null }> {
   const { accountId, programId } = opts
 
-  // 1. Fetch components
   const { data: components, error: compErr } = await supabase
     .from('ca_components')
     .select('*')
@@ -50,7 +49,6 @@ export async function fetchGradedReport(
 
   if (compErr) return { data: null, error: compErr.message }
 
-  // 2. Fetch participants
   const { data: participants, error: partErr } = await supabase
     .from('participants')
     .select('id, full_name, system_id, external_id, photo_url')
@@ -59,7 +57,6 @@ export async function fetchGradedReport(
 
   if (partErr) return { data: null, error: partErr.message }
 
-  // 3. Fetch program exam_max
   const { data: program } = await supabase
     .from('programs')
     .select('exam_max_score')
@@ -68,7 +65,6 @@ export async function fetchGradedReport(
 
   const examMax = (program?.exam_max_score ?? 100) as number
 
-  // 4. Fetch contexts for this program (for attendance %)
   const { data: contexts, error: ctxErr } = await supabase
     .from('contexts')
     .select('id')
@@ -78,19 +74,22 @@ export async function fetchGradedReport(
 
   const contextIds = (contexts ?? []).map((c) => c.id)
 
-  // 5. Fetch presence records for those contexts
-  let presenceRecords: Array<{ participant_id: string; status: string }> = []
+  let presenceRecords: Array<{
+    participant_id: string
+    context_id: string
+    status: string
+  }> = []
+
   if (contextIds.length > 0) {
     const { data: presence, error: presErr } = await supabase
       .from('presence_records')
-      .select('participant_id, status')
+      .select('participant_id, context_id, status')
       .in('context_id', contextIds)
 
     if (presErr) return { data: null, error: presErr.message }
     presenceRecords = presence ?? []
   }
 
-  // 6. Fetch ca_scores for this program
   const { data: caScores, error: scoreErr } = await supabase
     .from('ca_scores')
     .select('participant_id, component_id, score')
@@ -98,7 +97,6 @@ export async function fetchGradedReport(
 
   if (scoreErr) return { data: null, error: scoreErr.message }
 
-  // 7. Fetch grades for this program
   const { data: grades, error: gradeErr } = await supabase
     .from('grades')
     .select(
@@ -108,14 +106,15 @@ export async function fetchGradedReport(
 
   if (gradeErr) return { data: null, error: gradeErr.message }
 
-  // Build lookup maps
-  const presentCounts = new Map<string, number>()
+  // Count DISTINCT contexts where the participant was present.
+  // A participant can have multiple presence records for the same context
+  // (e.g. kiosk + online check-in in the same session), so we dedupe.
+  const presentSet = new Map<string, Set<string>>()
   for (const r of presenceRecords) {
     if (r.status !== 'present') continue
-    presentCounts.set(
-      r.participant_id,
-      (presentCounts.get(r.participant_id) ?? 0) + 1
-    )
+    const set = presentSet.get(r.participant_id) ?? new Set<string>()
+    set.add(r.context_id)
+    presentSet.set(r.participant_id, set)
   }
 
   const scoreMap = new Map<string, number | null>()
@@ -145,13 +144,15 @@ export async function fetchGradedReport(
 
   const totalContexts = contextIds.length
 
-  // 8. Build rows
   const rows: GradedReportRow[] = (participants ?? []).map((p) => {
-    const presentCount = presentCounts.get(p.id) ?? 0
+    const presentCount = presentSet.get(p.id)?.size ?? 0
     const attendancePct =
       totalContexts === 0
         ? 0
-        : Math.round((presentCount / totalContexts) * 100)
+        : Math.min(
+            100,
+            Math.round((presentCount / totalContexts) * 100)
+          )
 
     const componentScores: Record<string, number | null> = {}
     for (const c of components ?? []) {
@@ -171,14 +172,15 @@ export async function fetchGradedReport(
     }
   })
 
-  // 9. Averages
   const rowsWithCA = rows.filter((r) => r.caTotal !== null)
   const rowsWithTotal = rows.filter((r) => r.total !== null)
 
   const avgAttendance =
     rows.length === 0
       ? 0
-      : Math.round(rows.reduce((sum, r) => sum + r.attendancePct, 0) / rows.length)
+      : Math.round(
+          rows.reduce((sum, r) => sum + r.attendancePct, 0) / rows.length
+        )
 
   const avgCA =
     rowsWithCA.length === 0
@@ -212,8 +214,6 @@ export async function fetchGradedReport(
     error: null,
   }
 }
-
-// ---------- CSV ----------
 
 function csvEscape(v: string | number | null | undefined): string {
   const s = v === null || v === undefined ? '' : String(v)

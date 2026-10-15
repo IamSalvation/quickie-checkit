@@ -31,6 +31,13 @@ export default function ParticipantDetailPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
 
+  useEffect(() => {
+    document.body.classList.add('printing-badge')
+    return () => {
+      document.body.classList.remove('printing-badge')
+    }
+  }, [])
+
   const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
@@ -47,7 +54,7 @@ export default function ParticipantDetailPage() {
 
   async function handleDelete() {
     if (!participant) return
-    if (!confirm(`Permanently delete ${participant.full_name}?`)) return
+    if (!confirm('Permanently delete ' + participant.full_name + '?')) return
     setWorking(true)
     const { error: err } = await deleteParticipant(participant.id)
     setWorking(false)
@@ -348,7 +355,6 @@ export default function ParticipantDetailPage() {
         </div>
       </div>
 
-      {/* Print-only badge (hidden on screen, visible on print) */}
       <div className="printable-badge hidden print:block">
         <ParticipantBadge
           participant={participant}

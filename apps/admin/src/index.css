@@ -12,14 +12,14 @@ body {
 }
 
 @media print {
-  body * { visibility: hidden; }
+  body.printing-badge * { visibility: hidden; }
 
-  .printable-badge,
-  .printable-badge * {
+  body.printing-badge .printable-badge,
+  body.printing-badge .printable-badge * {
     visibility: visible;
   }
 
-  .printable-badge {
+  body.printing-badge .printable-badge {
     position: absolute;
     left: 0;
     top: 0;

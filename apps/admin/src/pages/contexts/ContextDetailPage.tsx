@@ -80,6 +80,7 @@ function FaceBadge({ record }: { record: PresenceWithParticipant }) {
       </span>
     )
   }
+
   if (record.face_match_result === 'no_match') {
     if (record.face_review_status === 'approved') {
       return (
@@ -101,7 +102,38 @@ function FaceBadge({ record }: { record: PresenceWithParticipant }) {
       </span>
     )
   }
+
   if (record.face_match_result === 'not_attempted') {
+    if (record.face_attempt_reason === 'no_enrollment') {
+      return (
+        <span
+          className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
+          title="Participant has no enrolled face"
+        >
+          Not enrolled
+        </span>
+      )
+    }
+    if (record.face_attempt_reason === 'no_face_detected') {
+      return (
+        <span
+          className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+          title="Participant is enrolled, but no face was detected in the scan"
+        >
+          No face
+        </span>
+      )
+    }
+    if (record.face_attempt_reason === 'rpc_error') {
+      return (
+        <span
+          className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-600"
+          title="Face verification encountered an error"
+        >
+          Error
+        </span>
+      )
+    }
     return (
       <span
         className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
@@ -111,6 +143,7 @@ function FaceBadge({ record }: { record: PresenceWithParticipant }) {
       </span>
     )
   }
+
   return null
 }
 
@@ -395,7 +428,10 @@ export default function ContextDetailPage() {
   }
 
   const flagged = attendance.filter(
-    (r) => r.needs_review && r.status === 'present' && r.face_review_status !== 'pending'
+    (r) =>
+      r.needs_review &&
+      r.status === 'present' &&
+      r.face_review_status !== 'pending'
   )
 
   const facePending = attendance.filter(
@@ -625,7 +661,6 @@ export default function ContextDetailPage() {
           </div>
         )}
 
-        {/* FACE REVIEW CARD */}
         {facePending.length > 0 && (
           <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
             <div className="flex items-center gap-2">
@@ -690,12 +725,17 @@ export default function ContextDetailPage() {
                           Checked in {formatTime(r.checked_in_at)}
                         </div>
                         <div className="text-xs text-amber-700 mt-1">
-                          Score:{' '}
-                          {r.face_score !== null
-                            ? Math.round(r.face_score * 100) + '%'
-                            : 'unknown'}
-                          {' '}
-                          (need &gt;= 45% for match)
+                          {r.face_attempt_reason === 'no_face_detected' ? (
+                            'No face detected in selfie'
+                          ) : r.face_attempt_reason === 'no_enrollment' ? (
+                            'Not enrolled'
+                          ) : r.face_score !== null ? (
+                            'Score: ' +
+                            Math.round(r.face_score * 100) +
+                            '% (need >= 45% for match)'
+                          ) : (
+                            'No score'
+                          )}
                         </div>
                       </div>
                     </div>
@@ -867,11 +907,12 @@ export default function ContextDetailPage() {
                                 Absent
                               </span>
                             )}
-                            {r.needs_review && r.face_review_status !== 'pending' && (
-                              <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                                Review
-                              </span>
-                            )}
+                            {r.needs_review &&
+                              r.face_review_status !== 'pending' && (
+                                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                                  Review
+                                </span>
+                              )}
                             {r.mode === 'online' && (
                               <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
                                 Online

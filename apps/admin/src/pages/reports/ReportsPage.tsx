@@ -23,6 +23,18 @@ function formatDateTime(iso: string | null): string {
   })
 }
 
+// Strip a leading course code and shorten "Week" to "Wk" for narrow columns.
+// "PHY201 Week 3 Tue 8am" -> "Wk 3 Tue 8am"
+// "PHY201 - Week 3"       -> "Wk 3"
+// "Morning Assembly"      -> unchanged
+function shortContextLabel(label: string): string {
+  const stripped = label.replace(/^[A-Z]{2,}\d{2,}\s*[-:]?\s*/, '')
+  const short = stripped
+    .replace(/\bWeeks\b/gi, 'Wks')
+    .replace(/\bWeek\b/gi, 'Wk')
+  return short.trim() || label
+}
+
 const METHOD_LABELS: Record<string, string> = {
   qr_kiosk_inperson: 'QR (kiosk)',
   qr_kiosk_online: 'QR (online)',
@@ -37,7 +49,6 @@ export default function ReportsPage() {
 
   const [tab, setTab] = useState<Tab>('master')
 
-  // Master sheet state
   const [programs, setPrograms] = useState<Program[]>([])
   const [selectedProgramId, setSelectedProgramId] = useState<string>('')
   const [dateFrom, setDateFrom] = useState<string>('')
@@ -46,14 +57,12 @@ export default function ReportsPage() {
   const [masterLoading, setMasterLoading] = useState(false)
   const [masterError, setMasterError] = useState<string | null>(null)
 
-  // Session register state
   const [contexts, setContexts] = useState<ContextWithProgram[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string>('')
   const [registerRows, setRegisterRows] = useState<SessionRegisterRow[]>([])
   const [registerLoading, setRegisterLoading] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
 
-  // Load programs + contexts once
   useEffect(() => {
     if (!account) return
     listPrograms(account.id, { status: 'all', limit: 200 }).then(({ data }) =>
@@ -108,14 +117,14 @@ export default function ReportsPage() {
     if (!masterSheet) return
     const csv = masterSheetToCsv(masterSheet)
     const label = programs.find((p) => p.id === selectedProgramId)?.name ?? 'report'
-    downloadCsv(`${label}-master-sheet.csv`, csv)
+    downloadCsv(label + '-master-sheet.csv', csv)
   }
 
   function handleRegisterCsv() {
     if (registerRows.length === 0) return
     const csv = sessionRegisterToCsv(registerRows)
     const label = contexts.find((c) => c.id === selectedContextId)?.label ?? 'session'
-    downloadCsv(`${label}-register.csv`, csv)
+    downloadCsv(label + '-register.csv', csv)
   }
 
   return (
@@ -126,7 +135,6 @@ export default function ReportsPage() {
           Attendance reports and exports.
         </p>
 
-        {/* Tabs */}
         <div className="mt-6 flex gap-2 border-b border-slate-200 print:hidden">
           <button
             onClick={() => setTab('master')}
@@ -152,7 +160,6 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        {/* Master Sheet */}
         {tab === 'master' && (
           <>
             <div className="mt-5 grid gap-3 sm:grid-cols-3 print:hidden">
@@ -169,7 +176,7 @@ export default function ReportsPage() {
                   {programs.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
-                      {p.code ? ` (${p.code})` : ''}
+                      {p.code ? ' (' + p.code + ')' : ''}
                     </option>
                   ))}
                 </select>
@@ -235,7 +242,7 @@ export default function ReportsPage() {
             {masterSheet && masterSheet.contexts.length === 0 && (
               <div className="mt-6 rounded border border-dashed border-slate-300 bg-white p-6 text-center">
                 <p className="text-sm text-slate-500">
-                  No {preset.labels.contexts.toLowerCase()} found for this
+                  No {preset.labels.contexts.toLowerCase()} found for this{' '}
                   {preset.labels.program.toLowerCase()} in this date range.
                 </p>
               </div>
@@ -253,11 +260,13 @@ export default function ReportsPage() {
                       {masterSheet.contexts.map((c) => (
                         <th
                           key={c.id}
-                          className="px-2 py-2 font-medium text-center"
+                          className="px-2 py-2 font-medium text-center align-bottom"
                           title={c.label}
+                          style={{ maxWidth: '100px', minWidth: '80px' }}
                         >
-                          {c.label.slice(0, 12)}
-                          {c.label.length > 12 ? '...' : ''}
+                          <div className="whitespace-pre-line break-words leading-tight">
+                            {shortContextLabel(c.label)}
+                          </div>
                         </th>
                       ))}
                       <th className="px-3 py-2 font-medium text-right">%</th>
@@ -309,7 +318,6 @@ export default function ReportsPage() {
           </>
         )}
 
-        {/* Session Register */}
         {tab === 'register' && (
           <>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 print:hidden">
@@ -327,7 +335,7 @@ export default function ReportsPage() {
                     <option key={c.id} value={c.id}>
                       {c.label}
                       {c.starts_at
-                        ? ` - ${new Date(c.starts_at).toLocaleDateString()}`
+                        ? ' - ' + new Date(c.starts_at).toLocaleDateString()
                         : ''}
                     </option>
                   ))}

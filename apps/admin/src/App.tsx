@@ -24,6 +24,7 @@ import SettingsPage from './pages/settings/SettingsPage'
 import PlatformRoute from './pages/platform/PlatformRoute'
 import PlatformHome from './pages/platform/PlatformHome'
 import PlatformCustomers from './pages/platform/PlatformCustomers'
+import PlatformAccountDetail from './pages/platform/PlatformAccountDetail'
 
 function LoadingScreen() {
   return (
@@ -102,6 +103,7 @@ function AppRoutes() {
       >
         <Route index element={<PlatformHome />} />
         <Route path="customers" element={<PlatformCustomers />} />
+        <Route path="customers/:id" element={<PlatformAccountDetail />} />
       </Route>
 
       <Route

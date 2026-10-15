@@ -1,0 +1,4 @@
+-- 025_face_recognition.sql
+-- Face verification for V2-tier accounts.
+-- Adds participant_face_embeddings table + match_face RPC + face columns on presence_records.
+-- Full SQL lives in Supabase (SQL editor).

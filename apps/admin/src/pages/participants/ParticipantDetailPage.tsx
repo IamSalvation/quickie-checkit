@@ -14,6 +14,12 @@ import {
 import { supabase } from '../../lib/supabase'
 import ParticipantBadge from '../../components/badge/ParticipantBadge'
 import PhotoCapture from '../../components/PhotoCapture'
+import FaceEnrollmentModal from '../../components/FaceEnrollmentModal'
+
+interface FaceEnrollmentInfo {
+  enrolled: boolean
+  enrolled_at: string | null
+}
 
 export default function ParticipantDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -31,12 +37,38 @@ export default function ParticipantDetailPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
 
+  const [faceInfo, setFaceInfo] = useState<FaceEnrollmentInfo>({
+    enrolled: false,
+    enrolled_at: null,
+  })
+  const [showFaceModal, setShowFaceModal] = useState(false)
+
+  const isV2 = account?.tier === 'v2'
+
   useEffect(() => {
     document.body.classList.add('printing-badge')
     return () => {
       document.body.classList.remove('printing-badge')
     }
   }, [])
+
+  const loadFaceInfo = useCallback(async () => {
+    if (!id) return
+    const { data } = await supabase
+      .from('participant_face_embeddings')
+      .select('enrolled_at')
+      .eq('participant_id', id)
+      .maybeSingle()
+
+    if (data) {
+      setFaceInfo({
+        enrolled: true,
+        enrolled_at: data.enrolled_at,
+      })
+    } else {
+      setFaceInfo({ enrolled: false, enrolled_at: null })
+    }
+  }, [id])
 
   const load = useCallback(async () => {
     if (!id) return
@@ -51,6 +83,10 @@ export default function ParticipantDetailPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (isV2) loadFaceInfo()
+  }, [isV2, loadFaceInfo])
 
   async function handleDelete() {
     if (!participant) return
@@ -67,6 +103,22 @@ export default function ParticipantDetailPage() {
 
   function handlePrint() {
     window.print()
+  }
+
+  async function handleRemoveFace() {
+    if (!participant) return
+    if (!confirm('Remove the enrolled face for ' + participant.full_name + '?')) return
+    setWorking(true)
+    const { error: err } = await supabase
+      .from('participant_face_embeddings')
+      .delete()
+      .eq('participant_id', participant.id)
+    setWorking(false)
+    if (err) {
+      alert(err)
+      return
+    }
+    setFaceInfo({ enrolled: false, enrolled_at: null })
   }
 
   async function handleSavePhoto() {
@@ -332,6 +384,66 @@ export default function ParticipantDetailPage() {
             </div>
           </div>
 
+          {/* Face enrollment card - V2 only */}
+          {isV2 && (
+            <div className="mt-6 rounded-lg bg-white p-5 shadow">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-medium text-slate-900">
+                    Face verification
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Enroll this participant face so the kiosk can verify their
+                    identity on check-in.
+                  </p>
+                </div>
+                {faceInfo.enrolled && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                    Enrolled
+                  </span>
+                )}
+              </div>
+
+              {faceInfo.enrolled ? (
+                <div className="mt-4 space-y-3">
+                  <div className="text-xs text-slate-600">
+                    Enrolled on{' '}
+                    {faceInfo.enrolled_at
+                      ? new Date(faceInfo.enrolled_at).toLocaleString()
+                      : '-'}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setShowFaceModal(true)}
+                      className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    >
+                      Re-enroll
+                    </button>
+                    <button
+                      onClick={handleRemoveFace}
+                      disabled={working}
+                      className="rounded border border-red-300 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Remove enrollment
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded border border-dashed border-slate-300 p-6 text-center">
+                  <p className="text-sm text-slate-500">
+                    No face enrolled yet.
+                  </p>
+                  <button
+                    onClick={() => setShowFaceModal(true)}
+                    className="mt-3 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                  >
+                    Enroll face
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-6 rounded-lg bg-white p-5 shadow">
             <h2 className="text-sm font-medium text-slate-900">
               Badge preview
@@ -362,6 +474,18 @@ export default function ParticipantDetailPage() {
           forPrint
         />
       </div>
+
+      {isV2 && participant && (
+        <FaceEnrollmentModal
+          open={showFaceModal}
+          onClose={() => setShowFaceModal(false)}
+          participantId={participant.id}
+          participantName={participant.full_name}
+          onEnrolled={() => {
+            loadFaceInfo()
+          }}
+        />
+      )}
     </>
   )
 }

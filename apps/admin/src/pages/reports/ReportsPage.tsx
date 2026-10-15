@@ -12,8 +12,13 @@ import {
   type MasterSheet,
   type SessionRegisterRow,
 } from '../../lib/api/reports'
+import {
+  fetchGradedReport,
+  gradedReportToCsv,
+  type GradedReport,
+} from '../../lib/api/gradedReport'
 
-type Tab = 'master' | 'register'
+type Tab = 'master' | 'register' | 'grades'
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '-'
@@ -23,16 +28,23 @@ function formatDateTime(iso: string | null): string {
   })
 }
 
-// Strip a leading course code and shorten "Week" to "Wk" for narrow columns.
-// "PHY201 Week 3 Tue 8am" -> "Wk 3 Tue 8am"
-// "PHY201 - Week 3"       -> "Wk 3"
-// "Morning Assembly"      -> unchanged
 function shortContextLabel(label: string): string {
   const stripped = label.replace(/^[A-Z]{2,}\d{2,}\s*[-:]?\s*/, '')
   const short = stripped
     .replace(/\bWeeks\b/gi, 'Wks')
     .replace(/\bWeek\b/gi, 'Wk')
   return short.trim() || label
+}
+
+function gradeBadgeClass(grade: string | null): string {
+  if (!grade) return 'bg-slate-100 text-slate-500'
+  if (grade === 'A') return 'bg-emerald-50 text-emerald-700'
+  if (grade === 'B') return 'bg-green-50 text-green-700'
+  if (grade === 'C') return 'bg-yellow-50 text-yellow-700'
+  if (grade === 'D') return 'bg-orange-50 text-orange-700'
+  if (grade === 'E') return 'bg-orange-50 text-orange-800'
+  if (grade === 'F') return 'bg-red-50 text-red-700'
+  return 'bg-slate-100 text-slate-500'
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -50,6 +62,8 @@ export default function ReportsPage() {
   const [tab, setTab] = useState<Tab>('master')
 
   const [programs, setPrograms] = useState<Program[]>([])
+
+  // Master Sheet
   const [selectedProgramId, setSelectedProgramId] = useState<string>('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
@@ -57,11 +71,18 @@ export default function ReportsPage() {
   const [masterLoading, setMasterLoading] = useState(false)
   const [masterError, setMasterError] = useState<string | null>(null)
 
+  // Session Register
   const [contexts, setContexts] = useState<ContextWithProgram[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string>('')
   const [registerRows, setRegisterRows] = useState<SessionRegisterRow[]>([])
   const [registerLoading, setRegisterLoading] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
+
+  // Grades
+  const [gradesProgramId, setGradesProgramId] = useState<string>('')
+  const [gradedReport, setGradedReport] = useState<GradedReport | null>(null)
+  const [gradesLoading, setGradesLoading] = useState(false)
+  const [gradesError, setGradesError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!account) return
@@ -105,6 +126,23 @@ export default function ReportsPage() {
     setRegisterRows(data ?? [])
   }, [selectedContextId])
 
+  const loadGradedReport = useCallback(async () => {
+    if (!account || !gradesProgramId) return
+    setGradesLoading(true)
+    setGradesError(null)
+    const { data, error: err } = await fetchGradedReport({
+      accountId: account.id,
+      programId: gradesProgramId,
+    })
+    setGradesLoading(false)
+    if (err) {
+      setGradesError(err)
+      setGradedReport(null)
+      return
+    }
+    setGradedReport(data)
+  }, [account, gradesProgramId])
+
   useEffect(() => {
     if (tab === 'master' && selectedProgramId) loadMasterSheet()
   }, [tab, selectedProgramId, loadMasterSheet])
@@ -112,6 +150,10 @@ export default function ReportsPage() {
   useEffect(() => {
     if (tab === 'register' && selectedContextId) loadRegister()
   }, [tab, selectedContextId, loadRegister])
+
+  useEffect(() => {
+    if (tab === 'grades' && gradesProgramId) loadGradedReport()
+  }, [tab, gradesProgramId, loadGradedReport])
 
   function handleMasterCsv() {
     if (!masterSheet) return
@@ -127,6 +169,13 @@ export default function ReportsPage() {
     downloadCsv(label + '-register.csv', csv)
   }
 
+  function handleGradedCsv() {
+    if (!gradedReport) return
+    const csv = gradedReportToCsv(gradedReport)
+    const label = programs.find((p) => p.id === gradesProgramId)?.name ?? 'report'
+    downloadCsv(label + '-graded-sheet.csv', csv)
+  }
+
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
@@ -135,11 +184,11 @@ export default function ReportsPage() {
           Attendance reports and exports.
         </p>
 
-        <div className="mt-6 flex gap-2 border-b border-slate-200 print:hidden">
+        <div className="mt-6 flex gap-2 border-b border-slate-200 overflow-x-auto print:hidden">
           <button
             onClick={() => setTab('master')}
             className={
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px ' +
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ' +
               (tab === 'master'
                 ? 'border-slate-900 text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-700')
@@ -150,7 +199,7 @@ export default function ReportsPage() {
           <button
             onClick={() => setTab('register')}
             className={
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px ' +
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ' +
               (tab === 'register'
                 ? 'border-slate-900 text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-700')
@@ -158,8 +207,20 @@ export default function ReportsPage() {
           >
             Session Register
           </button>
+          <button
+            onClick={() => setTab('grades')}
+            className={
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ' +
+              (tab === 'grades'
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-700')
+            }
+          >
+            Grades
+          </button>
         </div>
 
+        {/* Master Sheet tab */}
         {tab === 'master' && (
           <>
             <div className="mt-5 grid gap-3 sm:grid-cols-3 print:hidden">
@@ -181,7 +242,6 @@ export default function ReportsPage() {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   From
@@ -193,7 +253,6 @@ export default function ReportsPage() {
                   className="block w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   To
@@ -289,8 +348,8 @@ export default function ReportsPage() {
                             v === 'P'
                               ? 'text-emerald-700 font-semibold'
                               : v === 'A'
-                              ? 'text-red-600 font-semibold'
-                              : 'text-slate-300'
+                                ? 'text-red-600 font-semibold'
+                                : 'text-slate-300'
                           return (
                             <td
                               key={c.id}
@@ -318,6 +377,7 @@ export default function ReportsPage() {
           </>
         )}
 
+        {/* Session Register tab */}
         {tab === 'register' && (
           <>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 print:hidden">
@@ -429,6 +489,185 @@ export default function ReportsPage() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Grades tab */}
+        {tab === 'grades' && (
+          <>
+            <div className="mt-5">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                {preset.labels.program}
+              </label>
+              <select
+                value={gradesProgramId}
+                onChange={(e) => setGradesProgramId(e.target.value)}
+                className="block w-full sm:max-w-md rounded border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              >
+                <option value="">- Select -</option>
+                {programs.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.code ? ' (' + p.code + ')' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 print:hidden">
+              <button
+                onClick={loadGradedReport}
+                disabled={!gradesProgramId || gradesLoading}
+                className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {gradesLoading ? 'Loading...' : 'Run report'}
+              </button>
+              {gradedReport && gradedReport.rows.length > 0 && (
+                <>
+                  <button
+                    onClick={handleGradedCsv}
+                    className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                  >
+                    Print
+                  </button>
+                </>
+              )}
+            </div>
+
+            {gradesError && (
+              <div className="mt-4 rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                {gradesError}
+              </div>
+            )}
+
+            {gradedReport && gradedReport.rows.length === 0 && (
+              <div className="mt-6 rounded border border-dashed border-slate-300 bg-white p-6 text-center">
+                <p className="text-sm text-slate-500">
+                  No participants to show for this{' '}
+                  {preset.labels.program.toLowerCase()}.
+                </p>
+              </div>
+            )}
+
+            {gradedReport && gradedReport.rows.length > 0 && (
+              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-slate-50 px-3 py-2 font-medium">
+                        Name
+                      </th>
+                      <th className="px-3 py-2 font-medium whitespace-nowrap">
+                        System ID
+                      </th>
+                      <th className="px-2 py-2 font-medium text-center">
+                        <div className="leading-tight">Attendance</div>
+                        <div className="text-[10px] font-normal normal-case text-slate-400">
+                          %
+                        </div>
+                      </th>
+                      {gradedReport.components.map((c) => (
+                        <th
+                          key={c.id}
+                          className="px-2 py-2 font-medium text-center"
+                        >
+                          <div className="leading-tight whitespace-nowrap">
+                            {c.name}
+                          </div>
+                          <div className="text-[10px] font-normal normal-case text-slate-400">
+                            /{c.max_score}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="px-3 py-2 font-medium text-right">CA</th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        <div className="leading-tight">Exam</div>
+                        <div className="text-[10px] font-normal normal-case text-slate-400">
+                          /{gradedReport.examMax}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 font-medium text-right">Total</th>
+                      <th className="px-3 py-2 font-medium text-center">Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {gradedReport.rows.map((row) => {
+                      const displayGrade =
+                        row.gradeOverride ?? row.grade ?? '-'
+                      return (
+                        <tr key={row.participant.id} className="hover:bg-slate-50">
+                          <td className="sticky left-0 z-10 bg-white hover:bg-slate-50 px-3 py-2 font-medium text-slate-900 whitespace-nowrap">
+                            {row.participant.full_name}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs text-slate-600 whitespace-nowrap">
+                            {row.participant.system_id}
+                          </td>
+                          <td className="px-2 py-2 text-center text-slate-700">
+                            {row.attendancePct}%
+                          </td>
+                          {gradedReport.components.map((c) => {
+                            const v = row.componentScores[c.id]
+                            return (
+                              <td
+                                key={c.id}
+                                className="px-2 py-2 text-center text-slate-700"
+                              >
+                                {v === null || v === undefined ? '-' : v}
+                              </td>
+                            )
+                          })}
+                          <td className="px-3 py-2 text-right text-slate-700">
+                            {row.caTotal ?? '-'}
+                          </td>
+                          <td className="px-3 py-2 text-right text-slate-700">
+                            {row.exam ?? '-'}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-slate-900">
+                            {row.total ?? '-'}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span
+                              className={
+                                'inline-block min-w-[2rem] rounded px-2 py-0.5 text-sm font-semibold ' +
+                                gradeBadgeClass(displayGrade)
+                              }
+                            >
+                              {displayGrade}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    <tr className="bg-slate-50 font-medium">
+                      <td className="sticky left-0 z-10 bg-slate-50 px-3 py-2 text-slate-700">
+                        Average
+                      </td>
+                      <td className="px-3 py-2"></td>
+                      <td className="px-2 py-2 text-center text-slate-700">
+                        {gradedReport.averages.attendancePct}%
+                      </td>
+                      {gradedReport.components.map((c) => (
+                        <td key={c.id} className="px-2 py-2"></td>
+                      ))}
+                      <td className="px-3 py-2 text-right text-slate-700">
+                        {gradedReport.averages.caTotal}
+                      </td>
+                      <td className="px-3 py-2"></td>
+                      <td className="px-3 py-2 text-right text-slate-700">
+                        {gradedReport.averages.total}
+                      </td>
+                      <td className="px-3 py-2"></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>

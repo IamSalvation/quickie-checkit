@@ -384,7 +384,6 @@ export default function ParticipantDetailPage() {
             </div>
           </div>
 
-          {/* Face enrollment card - V2 only */}
           {isV2 && (
             <div className="mt-6 rounded-lg bg-white p-5 shadow">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -394,7 +393,8 @@ export default function ParticipantDetailPage() {
                   </h2>
                   <p className="mt-1 text-xs text-slate-500">
                     Enroll this participant face so the kiosk can verify their
-                    identity on check-in.
+                    identity on check-in. The captured photo is also saved as
+                    their profile picture.
                   </p>
                 </div>
                 {faceInfo.enrolled && (
@@ -483,6 +483,7 @@ export default function ParticipantDetailPage() {
           participantName={participant.full_name}
           onEnrolled={() => {
             loadFaceInfo()
+            load()
           }}
         />
       )}

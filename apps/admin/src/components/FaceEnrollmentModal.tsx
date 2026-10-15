@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Modal from './ui/Modal'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { uploadParticipantPhoto } from '../lib/api/photos'
 
 interface Props {
   open: boolean
@@ -157,6 +158,7 @@ export default function FaceEnrollmentModal({
         return
       }
 
+      // 1. Save the embedding
       const { error: upsertErr } = await supabase
         .from('participant_face_embeddings')
         .upsert(
@@ -180,10 +182,27 @@ export default function FaceEnrollmentModal({
         return
       }
 
+      // 2. Also save this same capture as the participant profile photo.
+      //    Non-fatal: if upload fails, the embedding is still valid.
+      const { url: photoUrl, error: photoErr } = await uploadParticipantPhoto(
+        account.id,
+        participantId,
+        photoBlob
+      )
+
+      if (photoErr || !photoUrl) {
+        console.warn('Photo upload failed (embedding saved):', photoErr)
+      } else {
+        await supabase
+          .from('participants')
+          .update({ photo_url: photoUrl })
+          .eq('id', participantId)
+      }
+
       setSuccessMsg(
         'Face enrolled for ' +
           participantName +
-          '. Verification will now run at kiosk check-in.'
+          '. Profile photo updated. Verification will now run at kiosk check-in.'
       )
       setStep('done')
       onEnrolled()

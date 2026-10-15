@@ -181,7 +181,7 @@ export interface KioskVerifyResult {
 export async function kioskVerifyFace(
   deviceToken: string,
   recordId: string,
-  embedding: number[]
+  embedding: number[] | null
 ): Promise<{ data: KioskVerifyResult | null; error: string | null }> {
   const { data, error } = await supabase.rpc('kiosk_verify_face', {
     p_device_token: deviceToken,

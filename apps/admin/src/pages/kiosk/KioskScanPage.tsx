@@ -237,7 +237,6 @@ export default function KioskScanPage() {
         return
       }
 
-      // Show result immediately (before face verification completes)
       setState({
         kind: 'result',
         result: data,
@@ -245,7 +244,6 @@ export default function KioskScanPage() {
         verifying: false,
       })
 
-      // Success sound
       if (
         data.ok &&
         (data.code === 'checked_in' || data.code === 'checked_out')
@@ -255,7 +253,6 @@ export default function KioskScanPage() {
         playErrorBuzz()
       }
 
-      // If we checked in (not out), capture a live selfie + verify the face.
       if (
         data.ok &&
         data.code === 'checked_in' &&
@@ -264,26 +261,23 @@ export default function KioskScanPage() {
         videoRef.current &&
         canvasRef.current
       ) {
-        // Set verifying=true so the result screen shows a spinner
         setState((s) =>
           s.kind === 'result' ? { ...s, verifying: true } : s
         )
 
         try {
-          // Lazy-load face-api only when we actually need it
           const { extractEmbedding } = await import('../../lib/faceRecognition')
 
           const video = videoRef.current
           const canvas = canvasRef.current
 
-          // Build an image from the current frame
           canvas.width = video.videoWidth
           canvas.height = video.videoHeight
           const ctx = canvas.getContext('2d')
+
           if (ctx && video.videoWidth > 0) {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-            // Convert to Image for face-api
             const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
             const img = new Image()
             await new Promise<void>((resolve, reject) => {
@@ -293,70 +287,56 @@ export default function KioskScanPage() {
             })
 
             const embedding = await extractEmbedding(img)
-            if (embedding && embedding.length === 128) {
-              // 1. Save live selfie as check-in photo (best effort)
-              const blob: Blob | null = await new Promise((resolve) =>
-                canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8)
-              )
-              if (blob) {
-                const path = data.participant.id + '/' + Date.now() + '.jpg'
-                const { error: upErr } = await supabase.storage
+
+            // Always save the live selfie for the audit trail
+            // (even if no face was found - useful for review)
+            const blob: Blob | null = await new Promise((resolve) =>
+              canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8)
+            )
+            if (blob) {
+              const path = data.participant.id + '/' + Date.now() + '.jpg'
+              const { error: upErr } = await supabase.storage
+                .from('participant-photos')
+                .upload(path, blob, {
+                  contentType: 'image/jpeg',
+                  upsert: false,
+                })
+              if (!upErr) {
+                const { data: urlData } = supabase.storage
                   .from('participant-photos')
-                  .upload(path, blob, {
-                    contentType: 'image/jpeg',
-                    upsert: false,
-                  })
-                if (!upErr) {
-                  const { data: urlData } = supabase.storage
-                    .from('participant-photos')
-                    .getPublicUrl(path)
-                  if (urlData?.publicUrl) {
-                    await updatePresencePhoto(
-                      data.record.id,
-                      urlData.publicUrl
-                    )
-                  }
+                  .getPublicUrl(path)
+                if (urlData?.publicUrl) {
+                  await updatePresencePhoto(
+                    data.record.id,
+                    urlData.publicUrl
+                  )
                 }
               }
+            }
 
-              // 2. Verify the face against the enrolled embedding
-              const { data: verifyData } = await kioskVerifyFace(
-                deviceToken!,
-                data.record.id,
-                embedding
-              )
+            // Verify the face. If no face was found, pass null so the RPC
+            // can flag it for review (when the participant is enrolled).
+            const effectiveEmbedding =
+              embedding && embedding.length === 128 ? embedding : null
 
-              if (verifyData) {
-                setState((s) =>
-                  s.kind === 'result'
-                    ? { ...s, verify: verifyData, verifying: false }
-                    : s
-                )
-                // Play a warning beep if the match failed
-                if (verifyData.result === 'no_match') {
-                  playWarnBeep()
-                }
-              } else {
-                setState((s) =>
-                  s.kind === 'result' ? { ...s, verifying: false } : s
-                )
-              }
-            } else {
-              // No face detected
+            const { data: verifyData } = await kioskVerifyFace(
+              deviceToken!,
+              data.record.id,
+              effectiveEmbedding
+            )
+
+            if (verifyData) {
               setState((s) =>
                 s.kind === 'result'
-                  ? {
-                      ...s,
-                      verifying: false,
-                      verify: {
-                        ok: true,
-                        distance: null,
-                        score: null,
-                        result: 'not_attempted',
-                        reason: 'no_face_detected',
-                      },
-                    }
+                  ? { ...s, verify: verifyData, verifying: false }
                   : s
+              )
+              if (verifyData.result === 'no_match') {
+                playWarnBeep()
+              }
+            } else {
+              setState((s) =>
+                s.kind === 'result' ? { ...s, verifying: false } : s
               )
             }
           } else {
@@ -530,7 +510,6 @@ export default function KioskScanPage() {
                     : '-'}
                 </div>
 
-                {/* Face verification status */}
                 <div className="mt-4">
                   {state.verifying && (
                     <span className="inline-block rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-300">
@@ -556,7 +535,7 @@ export default function KioskScanPage() {
                           {state.verify.reason === 'no_enrollment'
                             ? 'Not enrolled'
                             : state.verify.reason === 'no_face_detected'
-                            ? 'No face detected'
+                            ? 'No face detected - flagged'
                             : 'Not verified'}
                         </span>
                       )}

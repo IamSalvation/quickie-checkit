@@ -1,0 +1,2 @@
+-- 028_face_verify_no_face.sql
+-- Extend kiosk_verify_face to flag "no face detected" scans when enrolled.

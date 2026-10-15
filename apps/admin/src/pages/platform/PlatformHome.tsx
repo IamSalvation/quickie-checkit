@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { listAllAccounts } from '../../lib/api/platform'
+import { getSupportUnreadCounts } from '../../lib/api/support'
 
 interface HomeCounts {
   total: number
@@ -21,6 +22,7 @@ export default function PlatformHome() {
     deleted: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [unreadInbox, setUnreadInbox] = useState(0)
 
   useEffect(() => {
     listAllAccounts().then(({ data }) => {
@@ -40,6 +42,23 @@ export default function PlatformHome() {
       setCounts(c)
       setLoading(false)
     })
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const { data } = await getSupportUnreadCounts()
+      if (!cancelled) setUnreadInbox(data.unread_for_platform)
+    }
+
+    load()
+    const iv = setInterval(load, 20000)
+
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
   }, [])
 
   return (
@@ -103,9 +122,11 @@ export default function PlatformHome() {
           <div className="text-xs uppercase tracking-wide text-slate-500">
             Inbox
           </div>
-          <div className="mt-1 text-3xl font-semibold text-slate-900">-</div>
+          <div className="mt-1 text-3xl font-semibold text-slate-900">
+            {unreadInbox}
+          </div>
           <div className="mt-2 text-xs text-slate-500">
-            Customer support messages
+            {unreadInbox > 0 ? 'unread messages' : 'Customer support messages'}
           </div>
         </Link>
       </div>

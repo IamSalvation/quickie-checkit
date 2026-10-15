@@ -1,19 +1,44 @@
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { getSupportUnreadCounts } from '../../lib/api/support'
 
 export default function PlatformShell() {
   const { operator, account, signOut } = useAuth()
   const navigate = useNavigate()
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const { data } = await getSupportUnreadCounts()
+      if (!cancelled) setUnread(data.unread_for_platform)
+    }
+
+    load()
+    const iv = setInterval(load, 20000)
+
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
+  }, [])
 
   async function handleSignOut() {
     await signOut()
     navigate('/login')
   }
 
-  const navItems = [
+  const navItems: Array<{
+    to: string
+    label: string
+    end: boolean
+    badge?: number
+  }> = [
     { to: '/platform', label: 'Home', end: true },
     { to: '/platform/customers', label: 'Customers', end: false },
-    { to: '/platform/inbox', label: 'Inbox', end: false },
+    { to: '/platform/inbox', label: 'Inbox', end: false, badge: unread },
   ]
 
   return (
@@ -55,14 +80,17 @@ export default function PlatformShell() {
                 end={item.end}
                 className={({ isActive }) =>
                   [
-                    'text-sm font-medium whitespace-nowrap',
-                    isActive
-                      ? 'text-white'
-                      : 'text-slate-400 hover:text-white',
+                    'flex items-center gap-2 text-sm font-medium whitespace-nowrap',
+                    isActive ? 'text-white' : 'text-slate-400 hover:text-white',
                   ].join(' ')
                 }
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.badge && item.badge > 0 ? (
+                  <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    {item.badge}
+                  </span>
+                ) : null}
               </NavLink>
             ))}
           </nav>

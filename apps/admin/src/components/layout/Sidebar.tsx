@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
+import { getSupportUnreadCounts } from '../../lib/api/support'
 
 interface SidebarProps {
   onClose?: () => void
@@ -10,7 +12,31 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const { account } = useAuth()
   const preset = getPreset(account?.preset)
 
-  const items = [
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const { data } = await getSupportUnreadCounts()
+      if (!cancelled) setUnread(data.unread_for_me)
+    }
+
+    load()
+    const iv = setInterval(load, 20000)
+
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
+  }, [])
+
+  const items: Array<{
+    to: string
+    label: string
+    end: boolean
+    badge?: number
+  }> = [
     { to: '/dashboard', label: 'Dashboard', end: true },
     { to: '/participants', label: preset.labels.participants, end: false },
     { to: '/programs', label: preset.labels.programs, end: false },
@@ -20,6 +46,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       ? [{ to: '/grades', label: 'Grades', end: false }]
       : []),
     { to: '/reports', label: 'Reports', end: false },
+    { to: '/messages', label: 'Messages', end: false, badge: unread },
     { to: '/settings', label: 'Settings', end: false },
   ]
 
@@ -53,14 +80,19 @@ export default function Sidebar({ onClose }: SidebarProps) {
             end={item.end}
             className={({ isActive }) =>
               [
-                'block rounded-md px-3 py-2 text-sm font-medium',
+                'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium',
                 isActive
                   ? 'bg-slate-800 text-white'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white',
               ].join(' ')
             }
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.badge && item.badge > 0 ? (
+              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                {item.badge}
+              </span>
+            ) : null}
           </NavLink>
         ))}
       </div>

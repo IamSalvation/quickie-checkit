@@ -21,10 +21,12 @@ import ReportsPage from './pages/reports/ReportsPage'
 import GradesPage from './pages/grades/GradesPage'
 import CaComponentsPage from './pages/grades/CaComponentsPage'
 import SettingsPage from './pages/settings/SettingsPage'
+import MessagesPage from './pages/messages/MessagesPage'
 import PlatformRoute from './pages/platform/PlatformRoute'
 import PlatformHome from './pages/platform/PlatformHome'
 import PlatformCustomers from './pages/platform/PlatformCustomers'
 import PlatformAccountDetail from './pages/platform/PlatformAccountDetail'
+import PlatformInbox from './pages/platform/PlatformInbox'
 
 function LoadingScreen() {
   return (
@@ -104,6 +106,7 @@ function AppRoutes() {
         <Route index element={<PlatformHome />} />
         <Route path="customers" element={<PlatformCustomers />} />
         <Route path="customers/:id" element={<PlatformAccountDetail />} />
+        <Route path="inbox" element={<PlatformInbox />} />
       </Route>
 
       <Route
@@ -124,6 +127,7 @@ function AppRoutes() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/grades" element={<GradesPage />} />
         <Route path="/grades/settings" element={<CaComponentsPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

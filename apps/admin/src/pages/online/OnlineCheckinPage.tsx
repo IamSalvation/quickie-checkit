@@ -66,12 +66,31 @@ export default function OnlineCheckinPage() {
 
     async function start() {
       try {
+        let selectedDeviceId: string | undefined
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices()
+          const cameras = devices.filter((d) => d.kind === 'videoinput')
+          const frontCamera =
+            cameras.find((c) => /front|user|selfie/i.test(c.label)) ||
+            cameras.find((c) => /wide|ultra/i.test(c.label)) ||
+            cameras[0]
+          if (frontCamera) selectedDeviceId = frontCamera.deviceId
+        } catch {
+          // ignore
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 720 },
-            height: { ideal: 720 },
-          },
+          video: selectedDeviceId
+            ? {
+              deviceId: { exact: selectedDeviceId },
+              width: { ideal: 720 },
+              height: { ideal: 960 },
+            }
+            : {
+              facingMode: 'user',
+              width: { ideal: 720 },
+              height: { ideal: 960 },
+            },
           audio: false,
         })
         if (cancelled) {
@@ -272,7 +291,7 @@ export default function OnlineCheckinPage() {
               </>
             ) : (
               <>
-                <div className="mt-5 relative rounded-lg overflow-hidden bg-black aspect-square">
+                <div className="mt-5 relative rounded-2xl overflow-hidden bg-black aspect-[3/4] shadow-2xl">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -283,6 +302,13 @@ export default function OnlineCheckinPage() {
                   <canvas ref={canvasRef} className="hidden" />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className="w-2/3 aspect-square border-4 border-white/80 rounded-2xl" />
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-6 pointer-events-none">
+                    <div className="bg-black/70 backdrop-blur-sm px-5 py-2.5 rounded-full">
+                      <p className="text-sm text-white font-medium text-center">
+                        Hold your badge inside the box
+                      </p>
+                    </div>
                   </div>
                 </div>
 

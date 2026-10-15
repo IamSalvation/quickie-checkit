@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppShell from './components/layout/AppShell'
 import PlatformShell from './components/layout/PlatformShell'
 import RootRedirect from './components/RootRedirect'
+import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -153,10 +154,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

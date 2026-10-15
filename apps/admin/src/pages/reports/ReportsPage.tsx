@@ -85,6 +85,10 @@ export default function ReportsPage() {
   const [gradesError, setGradesError] = useState<string | null>(null)
 
   useEffect(() => {
+    document.body.classList.remove('printing-badge')
+  }, [])
+
+  useEffect(() => {
     if (!account) return
     listPrograms(account.id, { status: 'all', limit: 200 }).then(({ data }) =>
       setPrograms(data)
@@ -308,7 +312,7 @@ export default function ReportsPage() {
             )}
 
             {masterSheet && masterSheet.contexts.length > 0 && (
-              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow">
+              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow print:overflow-visible print:shadow-none print:rounded-none">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -348,8 +352,8 @@ export default function ReportsPage() {
                             v === 'P'
                               ? 'text-emerald-700 font-semibold'
                               : v === 'A'
-                                ? 'text-red-600 font-semibold'
-                                : 'text-slate-300'
+                              ? 'text-red-600 font-semibold'
+                              : 'text-slate-300'
                           return (
                             <td
                               key={c.id}
@@ -436,7 +440,7 @@ export default function ReportsPage() {
             )}
 
             {registerRows.length > 0 && (
-              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow">
+              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow print:overflow-visible print:shadow-none print:rounded-none">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -499,7 +503,7 @@ export default function ReportsPage() {
         {/* Grades tab */}
         {tab === 'grades' && (
           <>
-            <div className="mt-5">
+            <div className="mt-5 print:hidden">
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 {preset.labels.program}
               </label>
@@ -560,7 +564,7 @@ export default function ReportsPage() {
             )}
 
             {gradedReport && gradedReport.rows.length > 0 && (
-              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow">
+              <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow print:overflow-visible print:shadow-none print:rounded-none">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>

@@ -12,6 +12,13 @@ body {
 }
 
 @media print {
+  /* Reset any fixed-height scroll containers so the whole page prints */
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Badge printing - only applies when body has .printing-badge */
   body.printing-badge * { visibility: hidden; }
 
   body.printing-badge .printable-badge,

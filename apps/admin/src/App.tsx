@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppShell from './components/layout/AppShell'
+import PlatformShell from './components/layout/PlatformShell'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import PendingApproval from './pages/PendingApproval'
@@ -20,6 +21,9 @@ import ReportsPage from './pages/reports/ReportsPage'
 import GradesPage from './pages/grades/GradesPage'
 import CaComponentsPage from './pages/grades/CaComponentsPage'
 import SettingsPage from './pages/settings/SettingsPage'
+import PlatformRoute from './pages/platform/PlatformRoute'
+import PlatformHome from './pages/platform/PlatformHome'
+import PlatformCustomers from './pages/platform/PlatformCustomers'
 
 function LoadingScreen() {
   return (
@@ -87,6 +91,18 @@ function AppRoutes() {
       <Route path="/kiosk/scan" element={<KioskScanPage />} />
 
       <Route path="/k/:code" element={<OnlineCheckinPage />} />
+
+      <Route
+        path="/platform"
+        element={
+          <PlatformRoute>
+            <PlatformShell />
+          </PlatformRoute>
+        }
+      >
+        <Route index element={<PlatformHome />} />
+        <Route path="customers" element={<PlatformCustomers />} />
+      </Route>
 
       <Route
         element={

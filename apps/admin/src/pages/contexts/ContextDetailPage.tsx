@@ -16,6 +16,8 @@ import {
   listPresenceForContext,
   resolveCheckout,
   resolveAbsent,
+  approveFaceCheckin,
+  rejectFaceCheckin,
   type PresenceWithParticipant,
 } from '../../lib/api/presence'
 import { listKiosks, type Kiosk } from '../../lib/api/kiosks'
@@ -59,6 +61,57 @@ function PhaseBadge({ phase }: { phase: ContextPhase }) {
       {phase === 'in' ? 'Check-in phase' : 'Check-out phase'}
     </span>
   )
+}
+
+function FaceBadge({ record }: { record: PresenceWithParticipant }) {
+  if (record.face_match_result === 'match') {
+    return (
+      <span
+        className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
+        title={
+          record.face_score !== null
+            ? 'Face match score: ' + Math.round(record.face_score * 100) + '%'
+            : 'Face matched'
+        }
+      >
+        Verified
+        {record.face_score !== null &&
+          ' ' + Math.round(record.face_score * 100) + '%'}
+      </span>
+    )
+  }
+  if (record.face_match_result === 'no_match') {
+    if (record.face_review_status === 'approved') {
+      return (
+        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+          Verified (approved)
+        </span>
+      )
+    }
+    if (record.face_review_status === 'rejected') {
+      return (
+        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
+          Face rejected
+        </span>
+      )
+    }
+    return (
+      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+        Face mismatch
+      </span>
+    )
+  }
+  if (record.face_match_result === 'not_attempted') {
+    return (
+      <span
+        className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
+        title={record.face_attempt_reason ?? ''}
+      >
+        Not verified
+      </span>
+    )
+  }
+  return null
 }
 
 function formatDateTime(iso: string | null): string {
@@ -106,7 +159,6 @@ export default function ContextDetailPage() {
   const [showOpenModal, setShowOpenModal] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
 
-  // Online check-in UI state
   const [onlineWorking, setOnlineWorking] = useState(false)
   const [onlineError, setOnlineError] = useState<string | null>(null)
   const [showOnlineExpiryPicker, setShowOnlineExpiryPicker] = useState(false)
@@ -244,6 +296,34 @@ export default function ContextDetailPage() {
     loadAttendance()
   }
 
+  async function handleApproveFace(rec: PresenceWithParticipant) {
+    setResolvingId(rec.id)
+    const { error: err } = await approveFaceCheckin(rec.id)
+    setResolvingId(null)
+    if (err) {
+      alert(err)
+      return
+    }
+    loadAttendance()
+  }
+
+  async function handleRejectFace(rec: PresenceWithParticipant) {
+    if (
+      !confirm(
+        `Reject ${rec.participant?.full_name}'s check-in? They will be marked absent.`
+      )
+    )
+      return
+    setResolvingId(rec.id)
+    const { error: err } = await rejectFaceCheckin(rec.id)
+    setResolvingId(null)
+    if (err) {
+      alert(err)
+      return
+    }
+    loadAttendance()
+  }
+
   async function handleOpenOnline(minutes: number | null) {
     if (!context) return
     setOnlineError(null)
@@ -262,7 +342,12 @@ export default function ContextDetailPage() {
 
   async function handleCloseOnline() {
     if (!context) return
-    if (!confirm('Close online check-in? Students with the link will not be able to check in.')) return
+    if (
+      !confirm(
+        'Close online check-in? Students with the link will not be able to check in.'
+      )
+    )
+      return
 
     setOnlineError(null)
     setOnlineWorking(true)
@@ -310,8 +395,13 @@ export default function ContextDetailPage() {
   }
 
   const flagged = attendance.filter(
-    (r) => r.needs_review && r.status === 'present'
+    (r) => r.needs_review && r.status === 'present' && r.face_review_status !== 'pending'
   )
+
+  const facePending = attendance.filter(
+    (r) => r.face_review_status === 'pending'
+  )
+
   const presentCount = attendance.filter((r) => r.status === 'present').length
   const absentCount = attendance.filter((r) => r.status === 'absent').length
   const checkedOutCount = attendance.filter(
@@ -397,7 +487,6 @@ export default function ContextDetailPage() {
           </div>
         </div>
 
-        {/* Online kiosk card */}
         {context.status === 'open' && (
           <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow">
             <div className="flex items-start justify-between gap-3">
@@ -461,7 +550,10 @@ export default function ContextDetailPage() {
                     </span>
                     <span className="ml-2 text-slate-400">
                       {context.public_checkin_expires
-                        ? `expires ${new Date(context.public_checkin_expires).toLocaleTimeString()}`
+                        ? 'expires ' +
+                          new Date(
+                            context.public_checkin_expires
+                          ).toLocaleTimeString()
                         : 'manual close'}
                     </span>
                   </div>
@@ -533,8 +625,105 @@ export default function ContextDetailPage() {
           </div>
         )}
 
+        {/* FACE REVIEW CARD */}
+        {facePending.length > 0 && (
+          <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-amber-700">!</span>
+              <h2 className="text-sm font-semibold text-amber-900">
+                Face review ({facePending.length} pending)
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-amber-800">
+              These check-ins failed face verification. Compare the enrolled
+              photo with the live selfie and decide: approve the check-in or
+              reject it (mark the participant absent).
+            </p>
+
+            <ul className="mt-4 space-y-3">
+              {facePending.map((r) => (
+                <li
+                  key={r.id}
+                  className="rounded border border-amber-200 bg-white p-3"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex gap-3 items-center">
+                      {r.participant?.photo_url ? (
+                        <div className="text-center">
+                          <img
+                            src={r.participant.photo_url}
+                            alt="Enrolled"
+                            className="h-16 w-16 rounded border-2 border-slate-300 object-cover"
+                          />
+                          <div className="mt-1 text-[9px] text-slate-500">
+                            Enrolled
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 rounded border-2 border-dashed border-slate-300 flex items-center justify-center text-[9px] text-slate-400">
+                          No enroll
+                        </div>
+                      )}
+
+                      {r.photo_url ? (
+                        <div className="text-center">
+                          <img
+                            src={r.photo_url}
+                            alt="Live"
+                            className="h-16 w-16 rounded border-2 border-amber-400 object-cover"
+                          />
+                          <div className="mt-1 text-[9px] text-slate-500">
+                            Live
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 rounded border-2 border-dashed border-slate-300 flex items-center justify-center text-[9px] text-slate-400">
+                          No selfie
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-900 truncate">
+                          {r.participant?.full_name ?? '-'}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          Checked in {formatTime(r.checked_in_at)}
+                        </div>
+                        <div className="text-xs text-amber-700 mt-1">
+                          Score:{' '}
+                          {r.face_score !== null
+                            ? Math.round(r.face_score * 100) + '%'
+                            : 'unknown'}
+                          {' '}
+                          (need &gt;= 45% for match)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 sm:flex-col">
+                      <button
+                        onClick={() => handleApproveFace(r)}
+                        disabled={resolvingId === r.id}
+                        className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectFace(r)}
+                        disabled={resolvingId === r.id}
+                        className="rounded border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Reject (mark absent)
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          {/* Details */}
           <div className="rounded-lg bg-white p-5 shadow lg:col-span-1">
             <h2 className="text-sm font-medium text-slate-900">Details</h2>
             <dl className="mt-3 space-y-3 text-sm">
@@ -600,7 +789,6 @@ export default function ContextDetailPage() {
             </dl>
           </div>
 
-          {/* Attendance */}
           <div className="rounded-lg bg-white p-5 shadow lg:col-span-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-slate-900">Attendance</h2>
@@ -651,6 +839,7 @@ export default function ContextDetailPage() {
                       <th className="pb-2 font-medium">In</th>
                       <th className="pb-2 font-medium">Out</th>
                       <th className="pb-2 font-medium">Method</th>
+                      <th className="pb-2 font-medium">Face</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -678,7 +867,7 @@ export default function ContextDetailPage() {
                                 Absent
                               </span>
                             )}
-                            {r.needs_review && (
+                            {r.needs_review && r.face_review_status !== 'pending' && (
                               <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
                                 Review
                               </span>
@@ -701,6 +890,9 @@ export default function ContextDetailPage() {
                         <td className="py-2 text-slate-600">
                           {METHOD_LABELS[r.method] ?? r.method}
                         </td>
+                        <td className="py-2">
+                          <FaceBadge record={r} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -710,7 +902,6 @@ export default function ContextDetailPage() {
           </div>
         </div>
 
-        {/* Flagged review card */}
         {flagged.length > 0 && (
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
             <div className="flex items-center gap-2">

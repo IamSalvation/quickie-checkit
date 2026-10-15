@@ -17,6 +17,7 @@ export type FaceAttemptReason =
   | 'low_quality'
   | 'rpc_error'
   | null
+export type FaceReviewStatus = 'pending' | 'approved' | 'rejected' | null
 
 export interface PresenceRecord {
   id: string
@@ -33,6 +34,7 @@ export interface PresenceRecord {
   face_match_result: FaceMatchResult | null
   face_verification_method: string | null
   face_attempt_reason: FaceAttemptReason
+  face_review_status: FaceReviewStatus
   photo_url: string | null
   needs_review: boolean
   status: PresenceStatus
@@ -217,5 +219,29 @@ export async function resolveAbsent(
 
   const result = data as { ok: boolean; message?: string }
   if (!result.ok) return { error: result.message ?? 'Could not resolve' }
+  return { error: null }
+}
+
+export async function approveFaceCheckin(
+  recordId: string
+): Promise<{ error: string | null }> {
+  const { data, error } = await supabase.rpc('approve_face_checkin', {
+    p_record_id: recordId,
+  })
+  if (error) return { error: error.message }
+  const result = data as { ok: boolean; message?: string }
+  if (!result.ok) return { error: result.message ?? 'Could not approve' }
+  return { error: null }
+}
+
+export async function rejectFaceCheckin(
+  recordId: string
+): Promise<{ error: string | null }> {
+  const { data, error } = await supabase.rpc('reject_face_checkin', {
+    p_record_id: recordId,
+  })
+  if (error) return { error: error.message }
+  const result = data as { ok: boolean; message?: string }
+  if (!result.ok) return { error: result.message ?? 'Could not reject' }
   return { error: null }
 }

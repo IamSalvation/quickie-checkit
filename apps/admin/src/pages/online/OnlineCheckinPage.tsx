@@ -32,7 +32,6 @@ export default function OnlineCheckinPage() {
   const processingRef = useRef(false)
   const cooldownRef = useRef(0)
 
-  // Lookup the context on mount
   useEffect(() => {
     if (!code) {
       setInvalidMessage('No code provided.')
@@ -57,7 +56,6 @@ export default function OnlineCheckinPage() {
     })
   }, [code])
 
-  // Camera scan loop
   useEffect(() => {
     if (!scanning) return
     let cancelled = false
@@ -82,15 +80,15 @@ export default function OnlineCheckinPage() {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: selectedDeviceId
             ? {
-              deviceId: { exact: selectedDeviceId },
-              width: { ideal: 720 },
-              height: { ideal: 960 },
-            }
+                deviceId: { exact: selectedDeviceId },
+                width: { ideal: 720 },
+                height: { ideal: 960 },
+              }
             : {
-              facingMode: 'user',
-              width: { ideal: 720 },
-              height: { ideal: 960 },
-            },
+                facingMode: 'user',
+                width: { ideal: 720 },
+                height: { ideal: 960 },
+              },
           audio: false,
         })
         if (cancelled) {
@@ -100,7 +98,7 @@ export default function OnlineCheckinPage() {
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          await videoRef.current.play().catch(() => { })
+          await videoRef.current.play().catch(() => {})
         }
         await new Promise<void>((resolve) => {
           const check = () => {
@@ -271,8 +269,8 @@ export default function OnlineCheckinPage() {
                     {submitting
                       ? 'Submitting...'
                       : context.phase === 'in'
-                        ? 'Check in'
-                        : 'Check out'}
+                      ? 'Check in'
+                      : 'Check out'}
                   </button>
                 </form>
 
@@ -300,13 +298,10 @@ export default function OnlineCheckinPage() {
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                   <canvas ref={canvasRef} className="hidden" />
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div className="w-2/3 aspect-square border-4 border-white/80 rounded-2xl" />
-                  </div>
                   <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-6 pointer-events-none">
                     <div className="bg-black/70 backdrop-blur-sm px-5 py-2.5 rounded-full">
                       <p className="text-sm text-white font-medium text-center">
-                        Hold your badge inside the box
+                        Stand still so I can see your badge
                       </p>
                     </div>
                   </div>
@@ -351,8 +346,8 @@ export default function OnlineCheckinPage() {
                   Checked in at{' '}
                   {state.result.record?.checked_in_at
                     ? new Date(
-                      state.result.record.checked_in_at
-                    ).toLocaleTimeString()
+                        state.result.record.checked_in_at
+                      ).toLocaleTimeString()
                     : ''}
                 </p>
               </>
@@ -378,8 +373,8 @@ export default function OnlineCheckinPage() {
                   Checked out at{' '}
                   {state.result.record?.checked_out_at
                     ? new Date(
-                      state.result.record.checked_out_at
-                    ).toLocaleTimeString()
+                        state.result.record.checked_out_at
+                      ).toLocaleTimeString()
                     : ''}
                 </p>
               </>

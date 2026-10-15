@@ -288,8 +288,6 @@ export default function KioskScanPage() {
 
             const embedding = await extractEmbedding(img)
 
-            // Always save the live selfie for the audit trail
-            // (even if no face was found - useful for review)
             const blob: Blob | null = await new Promise((resolve) =>
               canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8)
             )
@@ -314,8 +312,6 @@ export default function KioskScanPage() {
               }
             }
 
-            // Verify the face. If no face was found, pass null so the RPC
-            // can flag it for review (when the participant is enrolled).
             const effectiveEmbedding =
               embedding && embedding.length === 128 ? embedding : null
 
@@ -469,13 +465,10 @@ export default function KioskScanPage() {
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <canvas ref={canvasRef} className="hidden" />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="w-2/3 aspect-square border-4 border-white/70 rounded-2xl" />
-              </div>
               <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-6 pointer-events-none">
                 <div className="bg-black/70 backdrop-blur-sm px-5 py-2.5 rounded-full">
                   <p className="text-sm text-white font-medium text-center">
-                    Hold the badge QR inside the box
+                    Stand still so I can see your badge
                   </p>
                 </div>
               </div>

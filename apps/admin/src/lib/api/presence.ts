@@ -10,6 +10,14 @@ export type PresenceMethod =
 export type PresenceMode = 'in_person' | 'online'
 export type PresenceStatus = 'present' | 'absent'
 
+export type FaceMatchResult = 'match' | 'no_match' | 'not_attempted'
+export type FaceAttemptReason =
+  | 'no_enrollment'
+  | 'no_face_detected'
+  | 'low_quality'
+  | 'rpc_error'
+  | null
+
 export interface PresenceRecord {
   id: string
   account_id: string
@@ -22,6 +30,9 @@ export interface PresenceRecord {
   mode: PresenceMode
   verified: boolean
   face_score: number | null
+  face_match_result: FaceMatchResult | null
+  face_verification_method: string | null
+  face_attempt_reason: FaceAttemptReason
   photo_url: string | null
   needs_review: boolean
   status: PresenceStatus
@@ -84,6 +95,7 @@ export interface KioskCheckinResult {
     | 'checked_out'
     | 'already_checked_in'
     | 'not_checked_in'
+    | 'marked_absent'
     | 'unknown_device'
     | 'device_revoked'
     | 'no_open_context'
@@ -155,9 +167,29 @@ export async function updatePresencePhoto(
   return { error: error?.message ?? null }
 }
 
-/**
- * Resolve a flagged record: mark them as checked out at a given time.
- */
+export interface KioskVerifyResult {
+  ok: boolean
+  distance: number | null
+  score: number | null
+  result: FaceMatchResult
+  reason?: FaceAttemptReason
+  message?: string
+}
+
+export async function kioskVerifyFace(
+  deviceToken: string,
+  recordId: string,
+  embedding: number[]
+): Promise<{ data: KioskVerifyResult | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('kiosk_verify_face', {
+    p_device_token: deviceToken,
+    p_record_id: recordId,
+    p_live_embedding: embedding,
+  })
+  if (error) return { data: null, error: error.message }
+  return { data: data as KioskVerifyResult, error: null }
+}
+
 export async function resolveCheckout(
   presenceId: string,
   checkedOutAt: string
@@ -174,9 +206,6 @@ export async function resolveCheckout(
   return { error: null }
 }
 
-/**
- * Resolve a flagged record: mark them as absent (not counted in attendance).
- */
 export async function resolveAbsent(
   presenceId: string
 ): Promise<{ error: string | null }> {

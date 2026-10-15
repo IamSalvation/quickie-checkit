@@ -5,7 +5,9 @@ import {
   kioskCheckin,
   kioskLookupContext,
   updatePresencePhoto,
+  kioskVerifyFace,
   type KioskCheckinResult,
+  type KioskVerifyResult,
 } from '../../lib/api/presence'
 import { supabase } from '../../lib/supabase'
 
@@ -17,7 +19,12 @@ type ScreenState =
   | { kind: 'no_context'; message: string }
   | { kind: 'error'; message: string }
   | { kind: 'scanning'; contextLabel: string; phase: 'in' | 'out' }
-  | { kind: 'result'; result: KioskCheckinResult }
+  | {
+      kind: 'result'
+      result: KioskCheckinResult
+      verify: KioskVerifyResult | null
+      verifying: boolean
+    }
 
 let audioContext: AudioContext | null = null
 
@@ -66,6 +73,10 @@ function playErrorBuzz() {
   playTone(220, 350, 0.18)
 }
 
+function playWarnBeep() {
+  playTone(440, 200, 0.15)
+}
+
 export default function KioskScanPage() {
   const navigate = useNavigate()
   const [state, setState] = useState<ScreenState>({ kind: 'loading' })
@@ -76,7 +87,6 @@ export default function KioskScanPage() {
   const cooldownRef = useRef<number>(0)
   const processingRef = useRef<boolean>(false)
 
-  // Periodically refresh the open-context lookup so the phase can change
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEY)
     if (!token) {
@@ -122,7 +132,6 @@ export default function KioskScanPage() {
     }
   }, [])
 
-  // Camera + scan loop, active only while in scanning state
   useEffect(() => {
     if (state.kind !== 'scanning') return
     let cancelled = false
@@ -212,7 +221,7 @@ export default function KioskScanPage() {
       } catch (e) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : 'Camera unavailable'
-        setState({ kind: 'error', message: `Camera: ${msg}` })
+        setState({ kind: 'error', message: 'Camera: ' + msg })
       }
     }
 
@@ -228,7 +237,25 @@ export default function KioskScanPage() {
         return
       }
 
-      // Capture selfie for check-ins only
+      // Show result immediately (before face verification completes)
+      setState({
+        kind: 'result',
+        result: data,
+        verify: null,
+        verifying: false,
+      })
+
+      // Success sound
+      if (
+        data.ok &&
+        (data.code === 'checked_in' || data.code === 'checked_out')
+      ) {
+        playSuccessChime()
+      } else {
+        playErrorBuzz()
+      }
+
+      // If we checked in (not out), capture a live selfie + verify the face.
       if (
         data.ok &&
         data.code === 'checked_in' &&
@@ -237,50 +264,124 @@ export default function KioskScanPage() {
         videoRef.current &&
         canvasRef.current
       ) {
+        // Set verifying=true so the result screen shows a spinner
+        setState((s) =>
+          s.kind === 'result' ? { ...s, verifying: true } : s
+        )
+
         try {
+          // Lazy-load face-api only when we actually need it
+          const { extractEmbedding } = await import('../../lib/faceRecognition')
+
           const video = videoRef.current
           const canvas = canvasRef.current
+
+          // Build an image from the current frame
           canvas.width = video.videoWidth
           canvas.height = video.videoHeight
           const ctx = canvas.getContext('2d')
           if (ctx && video.videoWidth > 0) {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-            const blob: Blob | null = await new Promise((resolve) =>
-              canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8)
-            )
-            if (blob) {
-              const path = `${data.participant.id}/${Date.now()}.jpg`
-              const { error: uploadErr } = await supabase.storage
-                .from('participant-photos')
-                .upload(path, blob, {
-                  contentType: 'image/jpeg',
-                  upsert: false,
-                })
 
-              if (!uploadErr) {
-                const { data: urlData } = supabase.storage
+            // Convert to Image for face-api
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+            const img = new Image()
+            await new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve()
+              img.onerror = (e) => reject(e)
+              img.src = dataUrl
+            })
+
+            const embedding = await extractEmbedding(img)
+            if (embedding && embedding.length === 128) {
+              // 1. Save live selfie as check-in photo (best effort)
+              const blob: Blob | null = await new Promise((resolve) =>
+                canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8)
+              )
+              if (blob) {
+                const path = data.participant.id + '/' + Date.now() + '.jpg'
+                const { error: upErr } = await supabase.storage
                   .from('participant-photos')
-                  .getPublicUrl(path)
-                if (urlData?.publicUrl) {
-                  await updatePresencePhoto(data.record.id, urlData.publicUrl)
+                  .upload(path, blob, {
+                    contentType: 'image/jpeg',
+                    upsert: false,
+                  })
+                if (!upErr) {
+                  const { data: urlData } = supabase.storage
+                    .from('participant-photos')
+                    .getPublicUrl(path)
+                  if (urlData?.publicUrl) {
+                    await updatePresencePhoto(
+                      data.record.id,
+                      urlData.publicUrl
+                    )
+                  }
                 }
               }
+
+              // 2. Verify the face against the enrolled embedding
+              const { data: verifyData } = await kioskVerifyFace(
+                deviceToken!,
+                data.record.id,
+                embedding
+              )
+
+              if (verifyData) {
+                setState((s) =>
+                  s.kind === 'result'
+                    ? { ...s, verify: verifyData, verifying: false }
+                    : s
+                )
+                // Play a warning beep if the match failed
+                if (verifyData.result === 'no_match') {
+                  playWarnBeep()
+                }
+              } else {
+                setState((s) =>
+                  s.kind === 'result' ? { ...s, verifying: false } : s
+                )
+              }
+            } else {
+              // No face detected
+              setState((s) =>
+                s.kind === 'result'
+                  ? {
+                      ...s,
+                      verifying: false,
+                      verify: {
+                        ok: true,
+                        distance: null,
+                        score: null,
+                        result: 'not_attempted',
+                        reason: 'no_face_detected',
+                      },
+                    }
+                  : s
+              )
             }
+          } else {
+            setState((s) =>
+              s.kind === 'result' ? { ...s, verifying: false } : s
+            )
           }
         } catch (err) {
-          console.warn('[Kiosk] Selfie capture error:', err)
+          console.warn('[Kiosk] Face verify failed:', err)
+          setState((s) =>
+            s.kind === 'result'
+              ? {
+                  ...s,
+                  verifying: false,
+                  verify: {
+                    ok: false,
+                    distance: null,
+                    score: null,
+                    result: 'not_attempted',
+                    reason: 'rpc_error',
+                  },
+                }
+              : s
+          )
         }
-      }
-
-      setState({ kind: 'result', result: data })
-
-      if (
-        data.ok &&
-        (data.code === 'checked_in' || data.code === 'checked_out')
-      ) {
-        playSuccessChime()
-      } else {
-        playErrorBuzz()
       }
 
       setTimeout(() => {
@@ -295,7 +396,7 @@ export default function KioskScanPage() {
         )
         processingRef.current = false
         cooldownRef.current = Date.now()
-      }, 2500)
+      }, 4000)
     }
 
     startCamera()
@@ -316,7 +417,7 @@ export default function KioskScanPage() {
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <div className="text-sm font-semibold">Quickie CheckIt — Kiosk</div>
+        <div className="text-sm font-semibold">Quickie CheckIt - Kiosk</div>
         {deviceToken && (
           <button
             onClick={clearToken}
@@ -342,7 +443,7 @@ export default function KioskScanPage() {
 
         {state.kind === 'no_context' && (
           <div className="max-w-md text-center">
-            <div className="text-4xl">⏸️</div>
+            <div className="text-4xl">-</div>
             <h1 className="mt-4 text-xl font-bold">No open session</h1>
             <p className="mt-3 text-sm text-slate-400">{state.message}</p>
             <button
@@ -356,7 +457,7 @@ export default function KioskScanPage() {
 
         {state.kind === 'error' && (
           <div className="max-w-md text-center">
-            <div className="text-4xl">⚠️</div>
+            <div className="text-4xl">!</div>
             <h1 className="mt-4 text-xl font-bold">Error</h1>
             <p className="mt-3 text-sm text-slate-400">{state.message}</p>
             <button
@@ -414,7 +515,7 @@ export default function KioskScanPage() {
                   />
                 ) : (
                   <div className="mx-auto h-32 w-32 rounded-full bg-emerald-500/20 border-4 border-emerald-400 flex items-center justify-center text-5xl">
-                    ✓
+                    OK
                   </div>
                 )}
                 <div className="mt-4 text-2xl font-bold text-emerald-400">
@@ -426,7 +527,41 @@ export default function KioskScanPage() {
                     ? new Date(
                         state.result.record.checked_in_at
                       ).toLocaleTimeString()
-                    : '—'}
+                    : '-'}
+                </div>
+
+                {/* Face verification status */}
+                <div className="mt-4">
+                  {state.verifying && (
+                    <span className="inline-block rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-300">
+                      Verifying face...
+                    </span>
+                  )}
+                  {!state.verifying && state.verify && (
+                    <>
+                      {state.verify.result === 'match' && (
+                        <span className="inline-block rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
+                          Face verified
+                          {state.verify.score !== null &&
+                            ' (' + Math.round(state.verify.score * 100) + '%)'}
+                        </span>
+                      )}
+                      {state.verify.result === 'no_match' && (
+                        <span className="inline-block rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-300">
+                          Face did not match - flagged
+                        </span>
+                      )}
+                      {state.verify.result === 'not_attempted' && (
+                        <span className="inline-block rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-400">
+                          {state.verify.reason === 'no_enrollment'
+                            ? 'Not enrolled'
+                            : state.verify.reason === 'no_face_detected'
+                            ? 'No face detected'
+                            : 'Not verified'}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -441,7 +576,7 @@ export default function KioskScanPage() {
                   />
                 ) : (
                   <div className="mx-auto h-32 w-32 rounded-full bg-blue-500/20 border-4 border-blue-400 flex items-center justify-center text-5xl">
-                    ⏱
+                    OK
                   </div>
                 )}
                 <div className="mt-4 text-2xl font-bold text-blue-400">
@@ -453,7 +588,7 @@ export default function KioskScanPage() {
                     ? new Date(
                         state.result.record.checked_out_at
                       ).toLocaleTimeString()
-                    : '—'}
+                    : '-'}
                 </div>
               </>
             )}
@@ -468,7 +603,7 @@ export default function KioskScanPage() {
                   />
                 ) : (
                   <div className="mx-auto h-32 w-32 rounded-full bg-amber-500/20 border-4 border-amber-400 flex items-center justify-center text-5xl">
-                    ↻
+                    OK
                   </div>
                 )}
                 <div className="mt-4 text-2xl font-bold text-amber-400">
@@ -483,7 +618,7 @@ export default function KioskScanPage() {
             {state.result.code === 'not_checked_in' && (
               <>
                 <div className="mx-auto h-32 w-32 rounded-full bg-red-500/20 border-4 border-red-400 flex items-center justify-center text-5xl">
-                  ✕
+                  X
                 </div>
                 <div className="mt-4 text-2xl font-bold text-red-400">
                   {state.result.participant?.full_name}
@@ -494,10 +629,25 @@ export default function KioskScanPage() {
               </>
             )}
 
+            {state.result.code === 'marked_absent' && (
+              <>
+                <div className="mx-auto h-32 w-32 rounded-full bg-red-500/20 border-4 border-red-400 flex items-center justify-center text-5xl">
+                  X
+                </div>
+                <div className="mt-4 text-2xl font-bold text-red-400">
+                  {state.result.participant?.full_name}
+                </div>
+                <div className="mt-1 text-sm text-slate-400">
+                  Marked absent for this session.
+                </div>
+              </>
+            )}
+
             {!state.result.ok &&
-              state.result.code !== 'not_checked_in' && (
+              state.result.code !== 'not_checked_in' &&
+              state.result.code !== 'marked_absent' && (
                 <>
-                  <div className="text-6xl">✕</div>
+                  <div className="text-6xl">X</div>
                   <div className="mt-4 text-2xl font-bold text-red-400">
                     {state.result.message}
                   </div>

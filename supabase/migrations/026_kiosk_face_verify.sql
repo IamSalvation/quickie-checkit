@@ -1,0 +1,2 @@
+-- 026_kiosk_face_verify.sql
+-- Kiosk-side face verification RPC. Full SQL lives in Supabase.

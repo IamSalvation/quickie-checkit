@@ -11,12 +11,15 @@ import {
 type PageState =
   | { kind: 'loading' }
   | { kind: 'invalid'; message: string }
-  | { kind: 'ready'; context: OnlineContextInfo; idEntryEnabled: boolean }
+  | { kind: 'ready' }
   | { kind: 'result'; result: OnlineCheckinResult }
 
 export default function OnlineCheckinPage() {
   const { code } = useParams<{ code: string }>()
   const [state, setState] = useState<PageState>({ kind: 'loading' })
+  const [context, setContext] = useState<OnlineContextInfo | null>(null)
+  const [invalidMessage, setInvalidMessage] = useState<string | null>(null)
+
   const [studentId, setStudentId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,23 +35,25 @@ export default function OnlineCheckinPage() {
   // Lookup the context on mount
   useEffect(() => {
     if (!code) {
+      setInvalidMessage('No code provided.')
       setState({ kind: 'invalid', message: 'No code provided.' })
       return
     }
     onlineLookupContext(code).then(({ data, error: err }) => {
       if (err || !data) {
-        setState({ kind: 'invalid', message: err ?? 'Lookup failed.' })
+        const msg = err ?? 'Lookup failed.'
+        setInvalidMessage(msg)
+        setState({ kind: 'invalid', message: msg })
         return
       }
       if (!data.ok || !data.context) {
-        setState({ kind: 'invalid', message: data.message ?? 'Link not valid.' })
+        const msg = data.message ?? 'Link not valid.'
+        setInvalidMessage(msg)
+        setState({ kind: 'invalid', message: msg })
         return
       }
-      setState({
-        kind: 'ready',
-        context: data.context,
-        idEntryEnabled: data.context.id_entry_enabled,
-      })
+      setContext(data.context)
+      setState({ kind: 'ready' })
     })
   }, [code])
 
@@ -62,7 +67,11 @@ export default function OnlineCheckinPage() {
     async function start() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 720 } },
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 720 },
+            height: { ideal: 720 },
+          },
           audio: false,
         })
         if (cancelled) {
@@ -72,7 +81,7 @@ export default function OnlineCheckinPage() {
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          await videoRef.current.play().catch(() => {})
+          await videoRef.current.play().catch(() => { })
         }
         await new Promise<void>((resolve) => {
           const check = () => {
@@ -88,7 +97,10 @@ export default function OnlineCheckinPage() {
           if (cancelled || !ctx || processingRef.current) return
           const video = videoRef.current
           if (!video || video.videoWidth === 0) return
-          const scale = Math.min(1, 600 / Math.max(video.videoWidth, video.videoHeight))
+          const scale = Math.min(
+            1,
+            600 / Math.max(video.videoWidth, video.videoHeight)
+          )
           const w = Math.round(video.videoWidth * scale)
           const h = Math.round(video.videoHeight * scale)
           scanCanvas.width = w
@@ -121,7 +133,10 @@ export default function OnlineCheckinPage() {
     }
   }, [scanning])
 
-  async function submitCheckin(systemId: string, method: 'id_entry_online' | 'qr_kiosk_online') {
+  async function submitCheckin(
+    systemId: string,
+    method: 'id_entry_online' | 'qr_kiosk_online'
+  ) {
     if (!code || processingRef.current) return
     processingRef.current = true
     setSubmitting(true)
@@ -150,18 +165,18 @@ export default function OnlineCheckinPage() {
   function reset() {
     setStudentId('')
     setError(null)
-    if (state.kind !== 'ready') return
-    setState({
-      kind: 'ready',
-      context: state.context,
-      idEntryEnabled: state.context.id_entry_enabled,
-    })
+    if (!context) return
+    setState({ kind: 'ready' })
+  }
+
+  function handleScanClick() {
+    setError(null)
+    setScanning(true)
   }
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="text-center mb-5">
           <div className="text-sm font-bold text-slate-900">Quickie CheckIt</div>
         </div>
@@ -178,28 +193,28 @@ export default function OnlineCheckinPage() {
             <h1 className="mt-4 text-xl font-bold text-slate-900">
               Link not available
             </h1>
-            <p className="mt-3 text-sm text-slate-600">{state.message}</p>
+            <p className="mt-3 text-sm text-slate-600">
+              {invalidMessage ?? 'This link is not valid.'}
+            </p>
             <p className="mt-6 text-xs text-slate-400">
               Ask your lecturer for a fresh link.
             </p>
           </div>
         )}
 
-        {state.kind === 'ready' && (
+        {state.kind === 'ready' && context && (
           <div className="rounded-lg bg-white p-6 shadow">
-            {/* Context info */}
             <div className="text-center">
               <div className="text-xs uppercase tracking-wide text-slate-500">
-                {state.context.phase === 'in' ? 'Check-in' : 'Check-out'}
+                {context.phase === 'in' ? 'Check-in' : 'Check-out'}
               </div>
               <h1 className="mt-1 text-xl font-bold text-slate-900">
-                {state.context.label}
+                {context.label}
               </h1>
             </div>
 
             {!scanning ? (
               <>
-                {/* ID entry */}
                 <form onSubmit={handleIdSubmit} className="mt-6 space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-slate-700">
@@ -211,10 +226,10 @@ export default function OnlineCheckinPage() {
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
                       placeholder="e.g. TESTSC-00001"
-                      className="mt-1 block w-full rounded border border-slate-300 px-3 py-3 text-base font-mono focus:border-slate-500 focus:outline-none"
-                      disabled={!state.idEntryEnabled || submitting}
+                      className="mt-1 block w-full rounded border border-slate-300 px-3 py-3 text-base font-mono focus:border-slate-500 focus:outline-none disabled:bg-slate-100"
+                      disabled={!context.id_entry_enabled || submitting}
                     />
-                    {!state.idEntryEnabled && (
+                    {!context.id_entry_enabled && (
                       <p className="mt-1 text-xs text-slate-500">
                         ID entry is disabled. Please scan your badge QR instead.
                       </p>
@@ -229,30 +244,27 @@ export default function OnlineCheckinPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting || !state.idEntryEnabled || !studentId.trim()}
+                    disabled={
+                      submitting || !context.id_entry_enabled || !studentId.trim()
+                    }
                     className="w-full rounded bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                   >
                     {submitting
                       ? 'Submitting...'
-                      : state.context.phase === 'in'
-                      ? 'Check in'
-                      : 'Check out'}
+                      : context.phase === 'in'
+                        ? 'Check in'
+                        : 'Check out'}
                   </button>
                 </form>
 
-                {/* Divider */}
                 <div className="my-5 flex items-center gap-3">
                   <div className="h-px flex-1 bg-slate-200" />
                   <div className="text-xs text-slate-400">OR</div>
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
 
-                {/* QR scan */}
                 <button
-                  onClick={() => {
-                    setError(null)
-                    setScanning(true)
-                  }}
+                  onClick={handleScanClick}
                   className="w-full rounded border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Scan badge QR
@@ -260,7 +272,6 @@ export default function OnlineCheckinPage() {
               </>
             ) : (
               <>
-                {/* Camera view */}
                 <div className="mt-5 relative rounded-lg overflow-hidden bg-black aspect-square">
                   <video
                     ref={videoRef}
@@ -313,7 +324,9 @@ export default function OnlineCheckinPage() {
                 <p className="mt-1 text-sm text-slate-600">
                   Checked in at{' '}
                   {state.result.record?.checked_in_at
-                    ? new Date(state.result.record.checked_in_at).toLocaleTimeString()
+                    ? new Date(
+                      state.result.record.checked_in_at
+                    ).toLocaleTimeString()
                     : ''}
                 </p>
               </>
@@ -338,7 +351,9 @@ export default function OnlineCheckinPage() {
                 <p className="mt-1 text-sm text-slate-600">
                   Checked out at{' '}
                   {state.result.record?.checked_out_at
-                    ? new Date(state.result.record.checked_out_at).toLocaleTimeString()
+                    ? new Date(
+                      state.result.record.checked_out_at
+                    ).toLocaleTimeString()
                     : ''}
                 </p>
               </>
@@ -369,7 +384,7 @@ export default function OnlineCheckinPage() {
 
             <button
               onClick={reset}
-              className="mt-6 w-full rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+              className="mt-6 w-full rounded border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
             >
               Done
             </button>

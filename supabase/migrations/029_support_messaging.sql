@@ -1,0 +1,2 @@
+-- 029_support_messaging.sql
+-- Support messaging: threads + messages + RLS + helper RPCs.

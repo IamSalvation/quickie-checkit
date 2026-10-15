@@ -12,12 +12,15 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
   const items = [
     { to: '/dashboard', label: 'Dashboard', end: true },
-    { to: '/participants', label: preset.labels.participants },
-    { to: '/programs', label: preset.labels.programs },
-    { to: '/contexts', label: preset.labels.contexts },
-    { to: '/kiosks', label: 'Kiosks' },
-    { to: '/reports', label: 'Reports' },
-    { to: '/settings', label: 'Settings' },
+    { to: '/participants', label: preset.labels.participants, end: false },
+    { to: '/programs', label: preset.labels.programs, end: false },
+    { to: '/contexts', label: preset.labels.contexts, end: false },
+    { to: '/kiosks', label: 'Kiosks', end: false },
+    ...(preset.value === 'school'
+      ? [{ to: '/grades', label: 'Grades', end: false }]
+      : []),
+    { to: '/reports', label: 'Reports', end: false },
+    { to: '/settings', label: 'Settings', end: false },
   ]
 
   return (
@@ -37,7 +40,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             aria-label="Close menu"
             className="lg:hidden text-2xl leading-none text-slate-400 hover:text-white px-1"
           >
-            ×
+            x
           </button>
         )}
       </div>
@@ -63,7 +66,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       <div className="px-4 py-3 border-t border-slate-800 text-xs text-slate-500">
-        {preset.label} · {account?.status ?? '—'}
+        {preset.label} - {account?.status ?? '-'}
       </div>
     </nav>
   )

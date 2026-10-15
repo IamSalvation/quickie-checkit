@@ -17,6 +17,8 @@ import KioskSetupPage from './pages/kiosk/KioskSetupPage'
 import KioskScanPage from './pages/kiosk/KioskScanPage'
 import OnlineCheckinPage from './pages/online/OnlineCheckinPage'
 import ReportsPage from './pages/reports/ReportsPage'
+import GradesPage from './pages/grades/GradesPage'
+import CaComponentsPage from './pages/grades/CaComponentsPage'
 import SettingsPage from './pages/settings/SettingsPage'
 
 function LoadingScreen() {
@@ -63,7 +65,6 @@ function PendingRoute() {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public auth */}
       <Route
         path="/login"
         element={
@@ -82,14 +83,11 @@ function AppRoutes() {
       />
       <Route path="/pending" element={<PendingRoute />} />
 
-      {/* Public kiosk (no auth) */}
       <Route path="/kiosk/setup/:token" element={<KioskSetupPage />} />
       <Route path="/kiosk/scan" element={<KioskScanPage />} />
 
-      {/* Public online check-in (no auth) */}
       <Route path="/k/:code" element={<OnlineCheckinPage />} />
 
-      {/* Protected admin app */}
       <Route
         element={
           <ProtectedRoute>
@@ -106,6 +104,8 @@ function AppRoutes() {
         <Route path="/contexts/:id" element={<ContextDetailPage />} />
         <Route path="/kiosks" element={<KiosksPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/grades" element={<GradesPage />} />
+        <Route path="/grades/settings" element={<CaComponentsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

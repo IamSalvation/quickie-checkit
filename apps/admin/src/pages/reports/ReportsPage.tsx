@@ -47,6 +47,34 @@ function gradeBadgeClass(grade: string | null): string {
   return 'bg-slate-100 text-slate-500'
 }
 
+function programLabel(program: Program | undefined): string | undefined {
+  if (!program) return undefined
+  return program.code ? program.name + ' (' + program.code + ')' : program.name
+}
+
+interface PrintHeaderProps {
+  title: string
+  subtitle?: string
+}
+
+function PrintHeader({ title, subtitle }: PrintHeaderProps) {
+  const now = new Date().toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  return (
+    <div className="hidden print:block mb-4">
+      <div className="text-lg font-bold text-slate-900">{title}</div>
+      {subtitle && (
+        <div className="text-xs text-slate-700">{subtitle}</div>
+      )}
+      <div className="text-xs text-slate-500">
+        Quickie CheckIt - Generated {now}
+      </div>
+    </div>
+  )
+}
+
 const METHOD_LABELS: Record<string, string> = {
   qr_kiosk_inperson: 'QR (kiosk)',
   qr_kiosk_online: 'QR (online)',
@@ -63,7 +91,6 @@ export default function ReportsPage() {
 
   const [programs, setPrograms] = useState<Program[]>([])
 
-  // Master Sheet
   const [selectedProgramId, setSelectedProgramId] = useState<string>('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
@@ -71,14 +98,12 @@ export default function ReportsPage() {
   const [masterLoading, setMasterLoading] = useState(false)
   const [masterError, setMasterError] = useState<string | null>(null)
 
-  // Session Register
   const [contexts, setContexts] = useState<ContextWithProgram[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string>('')
   const [registerRows, setRegisterRows] = useState<SessionRegisterRow[]>([])
   const [registerLoading, setRegisterLoading] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
 
-  // Grades
   const [gradesProgramId, setGradesProgramId] = useState<string>('')
   const [gradedReport, setGradedReport] = useState<GradedReport | null>(null)
   const [gradesLoading, setGradesLoading] = useState(false)
@@ -179,6 +204,10 @@ export default function ReportsPage() {
     const label = programs.find((p) => p.id === gradesProgramId)?.name ?? 'report'
     downloadCsv(label + '-graded-sheet.csv', csv)
   }
+
+  const selectedProgram = programs.find((p) => p.id === selectedProgramId)
+  const gradesProgram = programs.find((p) => p.id === gradesProgramId)
+  const selectedContext = contexts.find((c) => c.id === selectedContextId)
 
   return (
     <div className="p-4 sm:p-6">
@@ -313,6 +342,10 @@ export default function ReportsPage() {
 
             {masterSheet && masterSheet.contexts.length > 0 && (
               <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow print:overflow-visible print:shadow-none print:rounded-none">
+                <PrintHeader
+                  title={'Master Sheet - ' + preset.labels.program}
+                  subtitle={programLabel(selectedProgram)}
+                />
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -441,6 +474,10 @@ export default function ReportsPage() {
 
             {registerRows.length > 0 && (
               <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow print:overflow-visible print:shadow-none print:rounded-none">
+                <PrintHeader
+                  title={preset.labels.context + ' Register'}
+                  subtitle={selectedContext?.label}
+                />
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -565,6 +602,10 @@ export default function ReportsPage() {
 
             {gradedReport && gradedReport.rows.length > 0 && (
               <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow print:overflow-visible print:shadow-none print:rounded-none">
+                <PrintHeader
+                  title={'Grades - ' + preset.labels.program}
+                  subtitle={programLabel(gradesProgram)}
+                />
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>

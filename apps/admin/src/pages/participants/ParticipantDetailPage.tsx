@@ -145,7 +145,7 @@ export default function ParticipantDetailPage() {
             to="/participants"
             className="mt-4 inline-block text-sm text-slate-600 hover:underline"
           >
-            ← Back to {preset.labels.participants}
+            &lt;- Back to {preset.labels.participants}
           </Link>
         </div>
       </div>
@@ -154,35 +154,13 @@ export default function ParticipantDetailPage() {
 
   return (
     <>
-      <style>{`
-        @media print {
-          @page {
-            size: 3.5in 4.5in;
-            margin: 0.15in;
-          }
-          body * { visibility: hidden !important; }
-          .print-badge,
-          .print-badge * { visibility: visible !important; }
-          .print-badge {
-            display: block !important;
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 3.2in !important;
-            height: 4.2in !important;
-            background: white !important;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
-      <div className="p-4 sm:p-6 no-print">
+      <div className="p-4 sm:p-6 print:hidden">
         <div className="mx-auto max-w-4xl">
           <Link
             to="/participants"
             className="text-xs text-slate-500 hover:underline"
           >
-            ← Back to {preset.labels.participants}
+            &lt;- Back to {preset.labels.participants}
           </Link>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -247,7 +225,7 @@ export default function ParticipantDetailPage() {
                   <dt className="text-slate-500">External ID</dt>
                   <dd className="mt-0.5 text-slate-900">
                     {participant.external_id ?? (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-slate-400">-</span>
                     )}
                   </dd>
                 </div>
@@ -354,7 +332,7 @@ export default function ParticipantDetailPage() {
             <p className="mt-1 text-xs text-slate-500">
               This is what will print.
             </p>
-            <div className="mt-3 max-w-xs">
+            <div className="mt-3 max-w-sm">
               <ParticipantBadge
                 participant={participant}
                 accountName={account?.name ?? ''}
@@ -370,8 +348,8 @@ export default function ParticipantDetailPage() {
         </div>
       </div>
 
-      {/* Print-only badge — rendered on-page but hidden on screen via CSS */}
-      <div className="print-badge" style={{ display: 'none' }}>
+      {/* Print-only badge (hidden on screen, visible on print) */}
+      <div className="printable-badge hidden print:block">
         <ParticipantBadge
           participant={participant}
           accountName={account?.name ?? ''}

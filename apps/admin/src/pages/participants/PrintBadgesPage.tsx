@@ -33,7 +33,7 @@ export default function PrintBadgesPage() {
 
   if (loading) {
     return (
-      <div className="p-6 no-print">
+      <div className="p-6 print:hidden">
         <div className="mx-auto max-w-3xl text-sm text-slate-500">Loading...</div>
       </div>
     )
@@ -41,7 +41,7 @@ export default function PrintBadgesPage() {
 
   if (error) {
     return (
-      <div className="p-6 no-print">
+      <div className="p-6 print:hidden">
         <div className="mx-auto max-w-3xl">
           <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
             {error}
@@ -50,7 +50,7 @@ export default function PrintBadgesPage() {
             to="/participants"
             className="mt-4 inline-block text-sm text-slate-600 hover:underline"
           >
-            ← Back to {preset.labels.participants}
+            Back to {preset.labels.participants}
           </Link>
         </div>
       </div>
@@ -59,37 +59,46 @@ export default function PrintBadgesPage() {
 
   return (
     <>
-      {/* Print styles: 2 columns x 4 rows per page, clean borders */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 0.5in;
+            margin: 10mm;
           }
-          body {
-            background: white !important;
-          }
-          .no-print { display: none !important; }
-          .badge-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 0.25in !important;
-          }
-          .badge-cell {
+          body * { visibility: hidden; }
+          .printable-badge,
+          .printable-badge * { visibility: visible; }
+          .printable-badge {
+            position: relative !important;
             page-break-inside: avoid;
-            break-inside: avoid;
+            page-break-after: auto;
+            border: 1px solid #cbd5e1;
+            width: 85mm;
+            height: 55mm;
+            padding: 4mm;
+            box-sizing: border-box;
+            background: white;
+            display: inline-block;
+            vertical-align: top;
+            margin: 2mm;
+          }
+          .badge-grid {
+            display: block;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
         }
       `}</style>
 
-      {/* Controls (hidden when printing) */}
-      <div className="p-6 no-print">
+      <div className="p-6 print:hidden">
         <div className="mx-auto max-w-5xl">
           <Link
             to="/participants"
             className="text-xs text-slate-500 hover:underline"
           >
-            ← Back to {preset.labels.participants}
+            Back to {preset.labels.participants}
           </Link>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -102,7 +111,7 @@ export default function PrintBadgesPage() {
                 {participants.length === 1
                   ? preset.labels.participant.toLowerCase()
                   : preset.labels.participants.toLowerCase()}
-                . 8 per page.
+                . 3 per A4 page row.
               </p>
             </div>
             <button
@@ -114,15 +123,14 @@ export default function PrintBadgesPage() {
           </div>
 
           <div className="mt-5 rounded bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-            <strong>Tip:</strong> In the print dialog, set <em>Destination</em> to
-            "Save as PDF" if you want a file. Set margins to "Default" and enable
-            "Background graphics" for best results.
+            <strong>Tip:</strong> Set Destination to "Save as PDF" if you want a
+            file. Enable "Background graphics" in print settings for best
+            results.
           </div>
 
-          {/* Preview */}
           <div className="mt-6 rounded-lg bg-white p-5 shadow">
             <h2 className="text-sm font-medium text-slate-900">Preview</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {participants.map((p) => (
                 <ParticipantBadge
                   key={p.id}
@@ -135,10 +143,9 @@ export default function PrintBadgesPage() {
         </div>
       </div>
 
-      {/* Print-only grid */}
-      <div className="badge-grid" style={{ display: 'none' }}>
+      <div className="badge-grid hidden print:block">
         {participants.map((p) => (
-          <div key={p.id} className="badge-cell hidden print:block">
+          <div key={p.id} className="printable-badge">
             <ParticipantBadge
               participant={p}
               accountName={account?.name ?? ''}

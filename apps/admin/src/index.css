@@ -10,3 +10,29 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+@media print {
+  body * { visibility: hidden; }
+
+  .printable-badge,
+  .printable-badge * {
+    visibility: visible;
+  }
+
+  .printable-badge {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 85mm;
+    height: 55mm;
+    padding: 4mm;
+    box-sizing: border-box;
+    background: white;
+    border: 1px solid #cbd5e1;
+    page-break-after: always;
+  }
+
+  @page {
+    margin: 10mm;
+  }
+}

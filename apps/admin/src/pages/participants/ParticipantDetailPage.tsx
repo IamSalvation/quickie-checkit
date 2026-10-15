@@ -107,7 +107,10 @@ export default function ParticipantDetailPage() {
 
   async function handleRemoveFace() {
     if (!participant) return
-    if (!confirm('Remove the enrolled face for ' + participant.full_name + '?')) return
+    if (
+      !confirm('Remove the enrolled face for ' + participant.full_name + '?')
+    )
+      return
     setWorking(true)
     const { error: err } = await supabase
       .from('participant_face_embeddings')
@@ -481,9 +484,11 @@ export default function ParticipantDetailPage() {
           onClose={() => setShowFaceModal(false)}
           participantId={participant.id}
           participantName={participant.full_name}
-          onEnrolled={() => {
+          onEnrolled={async () => {
             loadFaceInfo()
-            load()
+            if (!id) return
+            const { data } = await getParticipant(id)
+            if (data) setParticipant(data)
           }}
         />
       )}

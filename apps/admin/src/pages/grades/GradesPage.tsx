@@ -32,7 +32,10 @@ export default function GradesPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingCell, setSavingCell] = useState<string | null>(null)
 
-  // Load programs on mount
+  // Local drafts so typing works
+  const [draftScores, setDraftScores] = useState<Record<string, string>>({})
+  const [draftExams, setDraftExams] = useState<Record<string, string>>({})
+
   useEffect(() => {
     if (!account) return
     listPrograms(account.id, { status: 'active', limit: 200 }).then(
@@ -40,13 +43,11 @@ export default function GradesPage() {
     )
   }, [account])
 
-  // Load CA components once
   useEffect(() => {
     if (!account) return
     listCaComponents(account.id).then(({ data }) => setComponents(data))
   }, [account])
 
-  // Load participants once
   useEffect(() => {
     if (!account) return
     listParticipants(account.id, { limit: 500 }).then(({ data }) =>
@@ -76,10 +77,13 @@ export default function GradesPage() {
   }, [selectedProgramId])
 
   useEffect(() => {
-    if (selectedProgramId) loadProgramData()
+    if (selectedProgramId) {
+      setDraftScores({})
+      setDraftExams({})
+      loadProgramData()
+    }
   }, [selectedProgramId, loadProgramData])
 
-  // Score lookup map
   const scoreMap = useMemo(() => {
     const m = new Map<string, number | null>()
     for (const s of scores) {
@@ -96,20 +100,52 @@ export default function GradesPage() {
     return m
   }, [gradeRows])
 
-  // Has any components defined?
   const hasComponents = components.length > 0
 
-  async function handleScoreChange(
+  function handleDraftScoreChange(
+    participantId: string,
+    componentId: string,
+    value: string
+  ) {
+    const key = participantId + '|' + componentId
+    setDraftScores((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleDraftExamChange(participantId: string, value: string) {
+    setDraftExams((prev) => ({ ...prev, [participantId]: value }))
+  }
+
+  async function commitScore(
     participantId: string,
     componentId: string,
     value: string
   ) {
     if (!account) return
-
-    const num = value === '' ? null : Number(value)
-    if (num !== null && (isNaN(num) || num < 0)) return
-
     const key = participantId + '|' + componentId
+
+    const existing = scoreMap.get(key)
+    const num = value === '' ? null : Number(value)
+
+    // Skip if unchanged
+    if (num === (existing ?? null)) {
+      setDraftScores((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+      return
+    }
+
+    if (num !== null && (isNaN(num) || num < 0)) {
+      // Revert draft
+      setDraftScores((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+      return
+    }
+
     setSavingCell(key)
 
     const { error: err } = await upsertCaScore(
@@ -123,32 +159,61 @@ export default function GradesPage() {
       user?.id ?? null
     )
 
-    setSavingCell(null)
     if (err) {
+      setSavingCell(null)
       alert(err)
       return
     }
 
-    // Recompute grade for this participant
     await recomputeGrade(participantId)
+    setSavingCell(null)
+    setDraftScores((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
     await loadProgramData()
   }
 
-  async function handleExamChange(participantId: string, value: string) {
+  async function commitExam(participantId: string, value: string) {
     if (!account) return
-
+    const existing = gradeMap.get(participantId)
     const num = value === '' ? null : Number(value)
-    if (num !== null && (isNaN(num) || num < 0)) return
 
-    const key = participantId + '|exam'
-    setSavingCell(key)
+    if (num === (existing?.exam ?? null)) {
+      setDraftExams((prev) => {
+        const next = { ...prev }
+        delete next[participantId]
+        return next
+      })
+      return
+    }
+
+    if (num !== null && (isNaN(num) || num < 0)) {
+      setDraftExams((prev) => {
+        const next = { ...prev }
+        delete next[participantId]
+        return next
+      })
+      return
+    }
+
+    setSavingCell(participantId + '|exam')
 
     await recomputeGrade(participantId, num)
     setSavingCell(null)
+    setDraftExams((prev) => {
+      const next = { ...prev }
+      delete next[participantId]
+      return next
+    })
     await loadProgramData()
   }
 
-  async function recomputeGrade(participantId: string, examOverride?: number | null) {
+  async function recomputeGrade(
+    participantId: string,
+    examOverride?: number | null
+  ) {
     if (!account) return
 
     const participantScores = scores.filter(
@@ -206,8 +271,7 @@ export default function GradesPage() {
             <Link to="/grades/settings" className="underline">
               Assessment structure
             </Link>{' '}
-            page. You will not be able to enter scores until at least one
-            component exists.
+            page.
           </div>
         )}
 
@@ -272,7 +336,11 @@ export default function GradesPage() {
                     <th
                       key={c.id}
                       className="px-2 py-2 font-medium text-center"
-                      title={`Max ${c.max_score}${c.weight !== 1 ? ', weight ' + c.weight : ''}`}
+                      title={
+                        'Max ' +
+                        c.max_score +
+                        (c.weight !== 1 ? ', weight ' + c.weight : '')
+                      }
                     >
                       <div className="leading-tight whitespace-nowrap">
                         {c.name}
@@ -296,7 +364,10 @@ export default function GradesPage() {
               <tbody className="divide-y divide-slate-100">
                 {participants.map((p) => {
                   const existingGrade = gradeMap.get(p.id)
-                  const displayGrade = existingGrade?.grade_override ?? existingGrade?.grade ?? '-'
+                  const displayGrade =
+                    existingGrade?.grade_override ??
+                    existingGrade?.grade ??
+                    '-'
                   return (
                     <tr key={p.id} className="hover:bg-slate-50">
                       <td className="sticky left-0 z-10 bg-white hover:bg-slate-50 px-3 py-2 font-medium text-slate-900 whitespace-nowrap">
@@ -307,9 +378,15 @@ export default function GradesPage() {
                       </td>
                       {components.map((c) => {
                         const key = p.id + '|' + c.id
-                        const cellKey = key
-                        const value = scoreMap.get(key)
-                        const isSaving = savingCell === cellKey
+                        const dbVal = scoreMap.get(key)
+                        const draftVal = draftScores[key]
+                        const displayVal =
+                          draftVal !== undefined
+                            ? draftVal
+                            : dbVal === null || dbVal === undefined
+                              ? ''
+                              : String(dbVal)
+                        const isSaving = savingCell === key
                         return (
                           <td key={c.id} className="px-1 py-1 text-center">
                             <input
@@ -317,17 +394,12 @@ export default function GradesPage() {
                               min="0"
                               max={c.max_score}
                               step="0.5"
-                              value={value ?? ''}
+                              value={displayVal}
                               disabled={isSaving || !hasComponents}
-                              onChange={(e) => {
-                                const v = e.target.value
-                                if (v === '') {
-                                  handleScoreChange(p.id, c.id, '')
-                                }
-                              }}
-                              onBlur={(e) =>
-                                handleScoreChange(p.id, c.id, e.target.value)
+                              onChange={(e) =>
+                                handleDraftScoreChange(p.id, c.id, e.target.value)
                               }
+                              onBlur={(e) => commitScore(p.id, c.id, e.target.value)}
                               className="w-16 rounded border border-slate-300 px-1 py-1 text-center text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-50"
                             />
                           </td>
@@ -339,17 +411,21 @@ export default function GradesPage() {
                           min="0"
                           max="100"
                           step="0.5"
-                          value={existingGrade?.exam ?? ''}
-                          disabled={savingCell === p.id + '|exam' || !hasComponents}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            if (v === '') {
-                              handleExamChange(p.id, '')
-                            }
-                          }}
-                          onBlur={(e) =>
-                            handleExamChange(p.id, e.target.value)
+                          value={
+                            draftExams[p.id] !== undefined
+                              ? draftExams[p.id]
+                              : existingGrade?.exam === null ||
+                                existingGrade?.exam === undefined
+                                ? ''
+                                : String(existingGrade.exam)
                           }
+                          disabled={
+                            savingCell === p.id + '|exam' || !hasComponents
+                          }
+                          onChange={(e) =>
+                            handleDraftExamChange(p.id, e.target.value)
+                          }
+                          onBlur={(e) => commitExam(p.id, e.target.value)}
                           className="w-16 rounded border border-slate-300 px-1 py-1 text-center text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-50"
                         />
                       </td>
@@ -366,16 +442,16 @@ export default function GradesPage() {
                             (displayGrade === 'A'
                               ? 'bg-emerald-50 text-emerald-700'
                               : displayGrade === 'B'
-                              ? 'bg-green-50 text-green-700'
-                              : displayGrade === 'C'
-                              ? 'bg-yellow-50 text-yellow-700'
-                              : displayGrade === 'D'
-                              ? 'bg-orange-50 text-orange-700'
-                              : displayGrade === 'E'
-                              ? 'bg-orange-50 text-orange-800'
-                              : displayGrade === 'F'
-                              ? 'bg-red-50 text-red-700'
-                              : 'bg-slate-100 text-slate-500')
+                                ? 'bg-green-50 text-green-700'
+                                : displayGrade === 'C'
+                                  ? 'bg-yellow-50 text-yellow-700'
+                                  : displayGrade === 'D'
+                                    ? 'bg-orange-50 text-orange-700'
+                                    : displayGrade === 'E'
+                                      ? 'bg-orange-50 text-orange-800'
+                                      : displayGrade === 'F'
+                                        ? 'bg-red-50 text-red-700'
+                                        : 'bg-slate-100 text-slate-500')
                           }
                         >
                           {displayGrade}
@@ -390,8 +466,7 @@ export default function GradesPage() {
         )}
 
         <p className="mt-4 text-xs text-slate-400">
-          Scores save automatically when you tab out of a field. The grade
-          updates immediately using the Nigeria default scale.
+          Scores save automatically when you tab out of a field.
         </p>
       </div>
     </div>

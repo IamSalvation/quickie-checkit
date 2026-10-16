@@ -487,7 +487,7 @@ export default function ParticipantDetailPage() {
         </div>
       </div>
 
-      <div className="printable-badge hidden print:block">
+      <div className="badge-print-root hidden print:block">
         <div className="badge-row">
           <div className="badge-half badge-half-front">
             <ParticipantBadge

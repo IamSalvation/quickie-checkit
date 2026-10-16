@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
-import { getAccountUsage, capStatus, type AccountUsage } from '../../lib/api/access'
+import { getAccountUsage, type AccountUsage } from '../../lib/api/access'
 import UpgradePrompt from '../../components/layout/UpgradePrompt'
 import {
   listParticipants,
@@ -57,18 +57,26 @@ export default function ParticipantsPage() {
   }, [loadUsage])
 
   function handleCreateClick() {
+    // Never allow creation until the usage check has completed.
     if (!usage) {
-      setShowCreate(true)
+      alert('Account limits are still loading. Please try again in a moment.')
       return
     }
+
+    // Expired accounts in grace mode are read-only.
     if (usage.state === 'grace') {
-      alert('Read-only mode: your account access has expired. Contact support to renew.')
+      alert(
+        'Read-only mode: your account access has expired. Contact support to renew.'
+      )
       return
     }
-    if (capStatus(usage).participants) {
+
+    // Compare the actual RPC values directly.
+    if (usage.participants >= usage.max_participants) {
       setShowUpgrade(true)
       return
     }
+
     setShowCreate(true)
   }
 

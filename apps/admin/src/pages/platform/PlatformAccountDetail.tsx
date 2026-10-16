@@ -13,6 +13,8 @@ import {
   accountTierClass,
   type AccountDetail,
 } from '../../lib/api/platform'
+import AccessLimitsCard from './AccessLimitsCard'
+import AccessLimitsEditModal from './AccessLimitsEditModal'
 
 export default function PlatformAccountDetail() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +25,7 @@ export default function PlatformAccountDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
+  const [showLimitsEdit, setShowLimitsEdit] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -255,6 +258,14 @@ export default function PlatformAccountDetail() {
         </div>
       </div>
 
+      <div className="mt-6">
+        <AccessLimitsCard
+          accountId={account.id}
+          accountName={account.name}
+          onEdit={() => setShowLimitsEdit(true)}
+        />
+      </div>
+
       <div className="mt-6 overflow-hidden rounded-lg bg-white shadow">
         <div className="border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-medium text-slate-900">
@@ -356,6 +367,13 @@ export default function PlatformAccountDetail() {
           {JSON.stringify(account.metadata ?? {}, null, 2)}
         </pre>
       </div>
+      <AccessLimitsEditModal
+        open={showLimitsEdit}
+        onClose={() => setShowLimitsEdit(false)}
+        onSaved={() => load()}
+        accountId={account.id}
+        accountName={account.name}
+      />
     </div>
   )
 }

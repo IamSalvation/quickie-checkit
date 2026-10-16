@@ -202,3 +202,159 @@ export function accountTierClass(tier: string): string {
       return 'bg-slate-100 text-slate-700'
   }
 }
+
+// ---------------- Account access & limits ----------------
+
+export interface AccountLimitsUpdate {
+  max_participants?: number
+  max_programs?: number
+  max_contexts?: number
+  max_kiosks?: number
+  access_expires_at?: string | null
+  lockout_grace_days?: number
+}
+
+export interface AccountUsageFull {
+  state: 'active' | 'grace' | 'locked'
+  participants: number
+  programs: number
+  contexts_this_month: number
+  kiosks: number
+  max_participants: number
+  max_programs: number
+  max_contexts: number
+  max_kiosks: number
+  access_expires_at: string | null
+  lockout_grace_days: number
+}
+
+export interface LimitChangeRow {
+  id: string
+  account_id: string
+  changed_by: string | null
+  field: string
+  old_value: string | null
+  new_value: string | null
+  changed_at: string
+}
+
+export async function getAccountUsageFull(
+  accountId: string
+): Promise<{ data: AccountUsageFull | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('account_usage', {
+    p_account_id: accountId,
+  })
+  if (error || !data) {
+    return { data: null, error: error?.message ?? null }
+  }
+  return { data: data as AccountUsageFull, error: null }
+}
+
+export async function listLimitChanges(
+  accountId: string,
+  limit = 20
+): Promise<{ data: LimitChangeRow[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from('account_limit_changes')
+    .select('*')
+    .eq('account_id', accountId)
+    .order('changed_at', { ascending: false })
+    .limit(limit)
+
+  if (error) return { data: [], error: error.message }
+  return { data: (data ?? []) as LimitChangeRow[], error: null }
+}
+
+/**
+ * Update account limits + expiry, and log every changed field to the audit table.
+ * Reads current values first so the audit log records old -> new for each field.
+ */
+export async function updateAccountLimits(
+  accountId: string,
+  updates: AccountLimitsUpdate,
+  changedBy: string
+): Promise<{ error: string | null }> {
+  // 1. Read current values for audit log
+  const { data: current, error: readErr } = await supabase
+    .from('accounts')
+    .select(
+      'max_participants, max_programs, max_contexts, max_kiosks, access_expires_at, lockout_grace_days'
+    )
+    .eq('id', accountId)
+    .maybeSingle()
+
+  if (readErr || !current) {
+    return { error: readErr?.message ?? 'Account not found' }
+  }
+
+  // 2. Compute diffs
+  const auditRows: {
+    account_id: string
+    changed_by: string
+    field: string
+    old_value: string | null
+    new_value: string | null
+  }[] = []
+
+  const fields: (keyof AccountLimitsUpdate)[] = [
+    'max_participants',
+    'max_programs',
+    'max_contexts',
+    'max_kiosks',
+    'access_expires_at',
+    'lockout_grace_days',
+  ]
+
+  for (const f of fields) {
+    if (updates[f] === undefined) continue
+    const oldVal = (current as Record<string, unknown>)[f]
+    const newVal = updates[f]
+    const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal)
+    const newStr = newVal === null || newVal === undefined ? null : String(newVal)
+    if (oldStr !== newStr) {
+      auditRows.push({
+        account_id: accountId,
+        changed_by: changedBy,
+        field: f,
+        old_value: oldStr,
+        new_value: newStr,
+      })
+    }
+  }
+
+  if (auditRows.length === 0) {
+    return { error: null } // nothing to do
+  }
+
+  // 3. Update the account
+  const patch: Record<string, unknown> = {}
+  for (const f of fields) {
+    if (updates[f] !== undefined) patch[f] = updates[f]
+  }
+  // Mark overridden if any cap changed
+  const capFields: (keyof AccountLimitsUpdate)[] = [
+    'max_participants',
+    'max_programs',
+    'max_contexts',
+    'max_kiosks',
+  ]
+  if (capFields.some((f) => updates[f] !== undefined)) {
+    patch.limits_overridden = true
+  }
+
+  const { error: updErr } = await supabase
+    .from('accounts')
+    .update(patch)
+    .eq('id', accountId)
+
+  if (updErr) return { error: updErr.message }
+
+  // 4. Write audit rows
+  const { error: auditErr } = await supabase
+    .from('account_limit_changes')
+    .insert(auditRows)
+
+  if (auditErr) return { error: auditErr.message }
+
+  return { error: null }
+}

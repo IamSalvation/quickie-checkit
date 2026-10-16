@@ -81,6 +81,7 @@ export default function ParticipantsPage() {
     }
     setParticipants((prev) => prev.filter((x) => x.id !== p.id))
     setCount((c) => Math.max(0, c - 1))
+    loadUsage()
   }
 
   return (
@@ -115,7 +116,7 @@ export default function ParticipantsPage() {
                 Bulk import
               </button>
               <button
-                onClick={() => setShowCreate(true)}
+                onClick={handleCreateClick}
                 className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Add {preset.labels.participant}
@@ -186,7 +187,7 @@ export default function ParticipantsPage() {
                       {p.system_id}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {p.external_id ?? <span className="text-slate-300">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â</span>}
+                      {p.external_id ?? <span className="text-slate-300">-</span>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -210,13 +211,17 @@ export default function ParticipantsPage() {
         onCreated={(p) => {
           setParticipants((prev) => [p, ...prev])
           setCount((c) => c + 1)
+          loadUsage()
         }}
       />
 
       <BulkImportModal
         open={showBulk}
         onClose={() => setShowBulk(false)}
-        onImported={() => load()}
+        onImported={() => {
+          load()
+          loadUsage()
+        }}
       />
 
       <UpgradePrompt

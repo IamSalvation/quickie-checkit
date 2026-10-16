@@ -35,7 +35,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow p-8">
-        <h1 className="text-2xl font-bold text-slate-900">Sign in to Pinkas</h1>
+        <div className="flex flex-col items-center mb-6"><img src="/logo.png" alt="Quickie Pinkas" className="h-16 w-auto mb-3" /></div><h1 className="text-2xl font-bold text-slate-900">Sign in to Pinkas</h1>
         <p className="mt-1 text-sm text-slate-600">
           Welcome back. Enter your details to continue.
         </p>

@@ -413,7 +413,7 @@ export default function ContextDetailPage() {
     return (
       <div className="p-6">
         <div className="mx-auto max-w-5xl">
-          <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+        <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
             {error ?? 'Not found'}
           </div>
           <Link
@@ -456,6 +456,7 @@ export default function ContextDetailPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-5xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <Link to="/contexts" className="text-xs text-slate-500 hover:underline">
           &lt;- Back to {preset.labels.contexts}
         </Link>

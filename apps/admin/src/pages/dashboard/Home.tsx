@@ -73,7 +73,7 @@ export default function DashboardHome() {
           {label}
         </div>
         <div className="mt-1 text-2xl font-semibold text-slate-900">
-          {loading ? '—' : value}
+          {loading ? 'â€”' : value}
         </div>
         <div className="mt-1 text-xs text-slate-400">
           {value === 0 ? hint : `View ${label.toLowerCase()}`}
@@ -85,6 +85,7 @@ export default function DashboardHome() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-5xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="mt-1 text-sm text-slate-600">
           Welcome back, {operator?.full_name ?? operator?.email}.

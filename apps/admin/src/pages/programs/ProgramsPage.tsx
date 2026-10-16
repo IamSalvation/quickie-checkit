@@ -96,6 +96,7 @@ export default function ProgramsPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-6xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -194,7 +195,7 @@ export default function ProgramsPage() {
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-900">{p.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">
-                      {p.code ?? <span className="text-slate-300">—</span>}
+                      {p.code ?? <span className="text-slate-300">â€”</span>}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {TYPE_LABELS[p.type]}

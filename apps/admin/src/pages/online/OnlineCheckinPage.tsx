@@ -195,7 +195,7 @@ export default function OnlineCheckinPage() {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-5">
-          <div className="text-sm font-bold text-slate-900">Quickie Pinkas</div>
+          <div className="flex flex-col items-center"><img src="/logo.png" alt="Quickie Pinkas" className="h-14 w-auto mb-2" /><div className="text-sm font-bold text-slate-900">Quickie Pinkas</div></div>
         </div>
 
         {state.kind === 'loading' && (

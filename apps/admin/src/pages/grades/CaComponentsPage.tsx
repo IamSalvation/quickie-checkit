@@ -166,6 +166,7 @@ export default function CaComponentsPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-4xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <Link to="/grades" className="text-xs text-slate-500 hover:underline">
           &lt;- Back to Grades
         </Link>

@@ -54,6 +54,7 @@ export default function ParticipantsPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-6xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
@@ -145,7 +146,7 @@ export default function ParticipantsPage() {
                       {p.system_id}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {p.external_id ?? <span className="text-slate-300">—</span>}
+                      {p.external_id ?? <span className="text-slate-300">â€”</span>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

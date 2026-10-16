@@ -32,7 +32,7 @@ function StatusBadge({ status }: { status: ContextStatus }) {
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return 'â€”'
   const d = new Date(iso)
   return d.toLocaleString(undefined, {
     month: 'short',
@@ -89,6 +89,7 @@ export default function ContextsPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-6xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
@@ -199,7 +200,7 @@ export default function ContextsPage() {
                       {c.program ? (
                         c.program.name
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-slate-300">â€”</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">

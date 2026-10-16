@@ -53,10 +53,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
   return (
     <nav className="flex flex-col h-full bg-slate-900 text-slate-100">
       <div className="flex items-center justify-between px-4 py-5 border-b border-slate-800">
-        <div className="min-w-0">
-          <div className="text-base font-semibold truncate">
-            Quickie Pinkas
-          </div>
+        <div className="flex items-center gap-2 min-w-0"><img src="/logo.png" alt="Quickie Pinkas" className="h-7 w-auto shrink-0" /><div className="text-base font-semibold truncate">Quickie Pinkas</div>
           <div className="mt-1 text-xs text-slate-400 truncate">
             {account?.name ?? 'Loading...'}
           </div>

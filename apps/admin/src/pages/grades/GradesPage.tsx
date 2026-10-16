@@ -244,6 +244,7 @@ export default function GradesPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Grades</h1>

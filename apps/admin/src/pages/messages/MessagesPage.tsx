@@ -82,6 +82,7 @@ export default function MessagesPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-3xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <div className="mb-5">
           <h1 className="text-2xl font-bold text-slate-900">Messages</h1>
           <p className="mt-1 text-sm text-slate-600">

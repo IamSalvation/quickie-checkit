@@ -13,7 +13,7 @@ import {
 import Modal from '../../components/ui/Modal'
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return 'â€”'
   return new Date(iso).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -121,13 +121,14 @@ export default function KiosksPage() {
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(
       () => alert('Copied to clipboard'),
-      () => alert('Copy failed — long-press or right-click to copy manually')
+      () => alert('Copy failed â€” long-press or right-click to copy manually')
     )
   }
 
   return (
     <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
+        <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Kiosks</h1>
@@ -291,7 +292,7 @@ export default function KiosksPage() {
                         <tr key={k.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-slate-900">{k.label}</td>
                           <td className="px-4 py-3 text-slate-600">
-                            {k.location ?? <span className="text-slate-300">—</span>}
+                            {k.location ?? <span className="text-slate-300">â€”</span>}
                           </td>
                           <td className="px-4 py-3">
                             {k.status === 'active' ? (

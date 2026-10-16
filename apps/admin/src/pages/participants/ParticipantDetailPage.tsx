@@ -218,7 +218,8 @@ export default function ParticipantDetailPage() {
     <>
       <div className="p-4 sm:p-6 print:hidden">
         <div className="mx-auto max-w-4xl">
-          <Link
+          <img src="/logo.png" alt="Quickie Pinkas" className="h-8 w-auto mb-4" />
+        <Link
             to="/participants"
             className="text-xs text-slate-500 hover:underline"
           >

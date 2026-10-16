@@ -20,7 +20,13 @@ export default function ParticipantBadge({
           : 'flex w-full max-w-sm flex-col items-center rounded-lg border border-slate-200 bg-white p-4 shadow-sm'
       }
     >
-      <div className="w-full text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">
+      <img
+        src="/logo.png"
+        alt="Quickie Pinkas"
+        className={forPrint ? 'h-6 w-auto' : 'h-10 w-auto'}
+      />
+
+      <div className="mt-2 w-full text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">
         {accountName}
       </div>
 

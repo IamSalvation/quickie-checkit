@@ -1,80 +1,83 @@
 import { QRCodeSVG } from 'qrcode.react'
 import type { Participant } from '../../lib/api/participants'
 
+export type BadgeSide = 'front' | 'back'
+
 interface Props {
   participant: Participant
   accountName: string
+  side: BadgeSide
   forPrint?: boolean
+}
+
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 export default function ParticipantBadge({
   participant,
   accountName,
+  side,
   forPrint = false,
 }: Props) {
-  return (
-    <div
-      className={
-        forPrint
-          ? 'flex h-full w-full flex-col items-center justify-between bg-white p-2'
-          : 'flex w-full max-w-sm flex-col items-center rounded-lg border border-slate-200 bg-white p-4 shadow-sm'
-      }
-    >
-      <img
-        src="/logo.png"
-        alt="Quickie Pinkas"
-        className={forPrint ? 'h-6 w-auto' : 'h-10 w-auto'}
-      />
+  const qrSize = forPrint ? 130 : 120
 
-      <div className="mt-2 w-full text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">
-        {accountName}
-      </div>
-
-      <div className="mt-2 flex items-center justify-center">
-        <QRCodeSVG
-          value={participant.system_id}
-          size={forPrint ? 130 : 140}
-          level="M"
+  if (side === 'front') {
+    return (
+      <div className="flex h-full w-full items-center justify-center gap-4 bg-white px-3">
+        <img
+          src="/logo.png"
+          alt="Quickie Pinkas"
+          className={forPrint ? 'h-16 w-auto' : 'h-12 w-auto'}
         />
+        <QRCodeSVG value={participant.system_id} size={qrSize} level="M" />
       </div>
+    )
+  }
 
-      <div className="mt-2 w-full text-center">
+  return (
+    <div className="flex h-full w-full items-center justify-center gap-4 bg-white px-3">
+      {participant.photo_url ? (
+        <img
+          src={participant.photo_url}
+          alt={participant.full_name}
+          className={
+            forPrint
+              ? 'h-20 w-20 rounded border border-slate-300 object-cover'
+              : 'h-16 w-16 rounded border border-slate-200 object-cover'
+          }
+        />
+      ) : (
         <div
           className={
             forPrint
-              ? 'text-[11px] font-bold text-slate-900 leading-tight'
-              : 'text-sm font-semibold text-slate-900 leading-tight'
+              ? 'flex h-20 w-20 items-center justify-center rounded border border-slate-300 bg-slate-100 text-2xl font-bold text-slate-500'
+              : 'flex h-16 w-16 items-center justify-center rounded border border-slate-200 bg-slate-100 text-xl font-bold text-slate-500'
           }
         >
+          {getInitials(participant.full_name)}
+        </div>
+      )}
+
+      <div className="flex flex-col justify-center">
+        <div className="text-xs font-bold text-slate-900 leading-tight">
           {participant.full_name}
         </div>
-        <div
-          className={
-            forPrint
-              ? 'mt-0.5 font-mono text-[9px] text-slate-600'
-              : 'mt-0.5 font-mono text-[10px] text-slate-600'
-          }
-        >
+        <div className="mt-0.5 font-mono text-[10px] text-slate-700">
           {participant.system_id}
         </div>
         {participant.external_id && (
-          <div
-            className={
-              forPrint
-                ? 'mt-0.5 text-[9px] text-slate-500'
-                : 'mt-0.5 text-[10px] text-slate-500'
-            }
-          >
+          <div className="mt-0.5 text-[10px] text-slate-600">
             {participant.external_id}
           </div>
         )}
-      </div>
-
-      {forPrint && (
-        <div className="mt-1 w-full text-center text-[7px] text-slate-400">
-          Hold this badge to the scanner
+        <div className="mt-1 text-[9px] uppercase tracking-wider text-slate-400">
+          {accountName}
         </div>
-      )}
+      </div>
     </div>
   )
 }

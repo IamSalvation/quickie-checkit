@@ -12,34 +12,60 @@ body {
 }
 
 @media print {
-  /* Reset any fixed-height scroll containers so the whole page prints */
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: auto !important;
     overflow: visible !important;
   }
 
-  /* Badge printing - only applies when body has .printing-badge */
-  body.printing-badge * { visibility: hidden; }
+  body.printing-badge * {
+    visibility: hidden;
+  }
 
-  body.printing-badge .printable-badge,
-  body.printing-badge .printable-badge * {
+  body.printing-badge .badge-print-root,
+  body.printing-badge .badge-print-root * {
     visibility: visible;
   }
 
-  body.printing-badge .printable-badge {
+  body.printing-badge .badge-print-root {
     position: absolute;
     left: 0;
     top: 0;
-    width: 85mm;
+    width: 194mm;
+  }
+
+  body.printing-badge .badge-row {
+    width: 190mm;
     height: 55mm;
-    padding: 4mm;
+    display: flex;
+    flex-direction: row;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border-bottom: 1px dashed #94a3b8;
+    padding-bottom: 2mm;
+    margin-bottom: 2mm;
     box-sizing: border-box;
-    background: white;
-    border: 1px solid #cbd5e1;
-    page-break-after: always;
+  }
+
+  body.printing-badge .badge-half {
+    width: 95mm;
+    height: 55mm;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  body.printing-badge .badge-half-front {
+    border-right: 1px dashed #94a3b8;
+    padding-right: 2mm;
+  }
+
+  body.printing-badge .badge-half-back {
+    padding-left: 2mm;
   }
 
   @page {
-    margin: 10mm;
+    size: A4 portrait;
+    margin: 8mm;
   }
 }

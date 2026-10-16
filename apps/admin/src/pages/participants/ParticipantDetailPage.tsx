@@ -455,11 +455,27 @@ export default function ParticipantDetailPage() {
             <p className="mt-1 text-xs text-slate-500">
               This is what will print.
             </p>
-            <div className="mt-3 max-w-sm">
-              <ParticipantBadge
-                participant={participant}
-                accountName={account?.name ?? ''}
-              />
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded border border-slate-200">
+                <div className="border-b border-slate-100 bg-slate-50 px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500">
+                  Front
+                </div>
+                <ParticipantBadge
+                  participant={participant}
+                  accountName={account?.name ?? ''}
+                  side="front"
+                />
+              </div>
+              <div className="rounded border border-slate-200">
+                <div className="border-b border-slate-100 bg-slate-50 px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500">
+                  Back
+                </div>
+                <ParticipantBadge
+                  participant={participant}
+                  accountName={account?.name ?? ''}
+                  side="back"
+                />
+              </div>
             </div>
           </div>
 
@@ -472,11 +488,24 @@ export default function ParticipantDetailPage() {
       </div>
 
       <div className="printable-badge hidden print:block">
-        <ParticipantBadge
-          participant={participant}
-          accountName={account?.name ?? ''}
-          forPrint
-        />
+        <div className="badge-row">
+          <div className="badge-half badge-half-front">
+            <ParticipantBadge
+              participant={participant}
+              accountName={account?.name ?? ''}
+              side="front"
+              forPrint
+            />
+          </div>
+          <div className="badge-half badge-half-back">
+            <ParticipantBadge
+              participant={participant}
+              accountName={account?.name ?? ''}
+              side="back"
+              forPrint
+            />
+          </div>
+        </div>
       </div>
 
       {isV2 && participant && (

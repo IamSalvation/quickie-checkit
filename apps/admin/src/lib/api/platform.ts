@@ -300,6 +300,8 @@ export async function updateAccountLimits(
     if (v === null || v === undefined) return null
     if (v instanceof Date) return v.toISOString()
     const s = String(v)
+    // Only try to parse as date if the string looks ISO-like
+    if (!/^\d{4}-\d{2}-\d{2}/.test(s)) return s
     const d = new Date(s)
     if (!isNaN(d.getTime())) return d.toISOString()
     return s

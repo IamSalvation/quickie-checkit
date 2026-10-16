@@ -24,6 +24,16 @@ export interface Account {
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
+
+  // Access limits & time (added in migration 030)
+  max_participants: number
+  max_programs: number
+  max_contexts: number
+  max_kiosks: number
+  access_expires_at: string | null
+  lockout_grace_days: number
+  trial_started_at: string | null
+  limits_overridden: boolean
 }
 
 export interface Operator {

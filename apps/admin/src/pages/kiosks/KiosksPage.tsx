@@ -11,9 +11,11 @@ import {
   type KioskStatus,
 } from '../../lib/api/kiosks'
 import Modal from '../../components/ui/Modal'
+import { getAccountUsage, capStatus, type AccountUsage } from '../../lib/api/access'
+import UpgradePrompt from '../../components/layout/UpgradePrompt'
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return 'â€”'
+  if (!iso) return 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'
   return new Date(iso).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -32,6 +34,8 @@ export default function KiosksPage() {
   const [statusFilter, setStatusFilter] = useState<KioskStatus | 'all'>('active')
 
   const [showCreate, setShowCreate] = useState(false)
+  const [usage, setUsage] = useState<AccountUsage | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [newLocation, setNewLocation] = useState('')
   const [creating, setCreating] = useState(false)
@@ -56,6 +60,32 @@ export default function KiosksPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  const loadUsage = useCallback(async () => {
+    if (!account) return
+    const { data } = await getAccountUsage(account.id)
+    setUsage(data)
+  }, [account])
+
+  useEffect(() => {
+    loadUsage()
+  }, [loadUsage])
+
+  function handleCreateClick() {
+    if (!usage) {
+      setShowCreate(true)
+      return
+    }
+    if (usage.state === 'grace') {
+      alert('Read-only mode: your account access has expired. Contact support to renew.')
+      return
+    }
+    if (capStatus(usage).kiosks) {
+      setShowUpgrade(true)
+      return
+    }
+    setShowCreate(true)
+  }
 
   function resetCreateForm() {
     setNewLabel('')
@@ -121,7 +151,7 @@ export default function KiosksPage() {
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(
       () => alert('Copied to clipboard'),
-      () => alert('Copy failed â€” long-press or right-click to copy manually')
+      () => alert('Copy failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â long-press or right-click to copy manually')
     )
   }
 
@@ -137,7 +167,7 @@ export default function KiosksPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={handleCreateClick}
             className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
             Register kiosk
@@ -292,7 +322,7 @@ export default function KiosksPage() {
                         <tr key={k.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-slate-900">{k.label}</td>
                           <td className="px-4 py-3 text-slate-600">
-                            {k.location ?? <span className="text-slate-300">â€”</span>}
+                            {k.location ?? <span className="text-slate-300">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</span>}
                           </td>
                           <td className="px-4 py-3">
                             {k.status === 'active' ? (
@@ -484,6 +514,15 @@ export default function KiosksPage() {
           </div>
         )}
       </Modal>
+
+      <UpgradePrompt
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        resource="kiosks"
+        used={usage?.kiosks ?? 0}
+        cap={usage?.max_kiosks ?? 0}
+        accountName={account?.name ?? ''}
+      />
     </div>
   )
 }

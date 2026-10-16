@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
+import { getAccountUsage, capStatus, type AccountUsage } from '../../lib/api/access'
+import UpgradePrompt from '../../components/layout/UpgradePrompt'
 import {
   listParticipants,
   deleteParticipant,
@@ -21,6 +23,8 @@ export default function ParticipantsPage() {
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [showBulk, setShowBulk] = useState(false)
+  const [usage, setUsage] = useState<AccountUsage | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const load = useCallback(async () => {
     if (!account) return
@@ -41,6 +45,32 @@ export default function ParticipantsPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  const loadUsage = useCallback(async () => {
+    if (!account) return
+    const { data } = await getAccountUsage(account.id)
+    setUsage(data)
+  }, [account])
+
+  useEffect(() => {
+    loadUsage()
+  }, [loadUsage])
+
+  function handleCreateClick() {
+    if (!usage) {
+      setShowCreate(true)
+      return
+    }
+    if (usage.state === 'grace') {
+      alert('Read-only mode: your account access has expired. Contact support to renew.')
+      return
+    }
+    if (capStatus(usage).participants) {
+      setShowUpgrade(true)
+      return
+    }
+    setShowCreate(true)
+  }
 
   async function handleDelete(p: Participant) {
     if (!confirm(`Delete ${p.full_name} (${p.system_id})?`)) return
@@ -122,7 +152,7 @@ export default function ParticipantsPage() {
               </p>
               {!search && (
                 <button
-                  onClick={() => setShowCreate(true)}
+                  onClick={handleCreateClick}
                   className="mt-4 rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   Add your first {preset.labels.participant.toLowerCase()}
@@ -156,7 +186,7 @@ export default function ParticipantsPage() {
                       {p.system_id}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {p.external_id ?? <span className="text-slate-300">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</span>}
+                      {p.external_id ?? <span className="text-slate-300">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â</span>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -187,6 +217,15 @@ export default function ParticipantsPage() {
         open={showBulk}
         onClose={() => setShowBulk(false)}
         onImported={() => load()}
+      />
+
+      <UpgradePrompt
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        resource="participants"
+        used={usage?.participants ?? 0}
+        cap={usage?.max_participants ?? 0}
+        accountName={account?.name ?? ''}
       />
     </div>
   )

@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppShell from './components/layout/AppShell'
 import PlatformShell from './components/layout/PlatformShell'
 import RootRedirect from './components/RootRedirect'
 import ErrorBoundary from './components/ErrorBoundary'
+import GraceBanner from './components/layout/GraceBanner'
+import LockedScreen from './components/layout/LockedScreen'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -31,6 +33,7 @@ import PlatformHome from './pages/platform/PlatformHome'
 import PlatformCustomers from './pages/platform/PlatformCustomers'
 import PlatformAccountDetail from './pages/platform/PlatformAccountDetail'
 import PlatformInbox from './pages/platform/PlatformInbox'
+import { getAccessState, type AccessState } from './lib/api/access'
 
 function LoadingScreen() {
   return (
@@ -42,12 +45,60 @@ function LoadingScreen() {
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, account, loading } = useAuth()
+  const [accessState, setAccessState] = useState<AccessState | null>(null)
+  const [checking, setChecking] = useState(true)
 
-  if (loading) return <LoadingScreen />
+  useEffect(() => {
+    let cancelled = false
+
+    async function check() {
+      if (!account) {
+        setChecking(false)
+        return
+      }
+      const { data } = await getAccessState(account.id)
+      if (cancelled) return
+      setAccessState(data)
+      setChecking(false)
+    }
+
+    if (loading) return
+    if (!account) {
+      setChecking(false)
+      return
+    }
+
+    check()
+    return () => {
+      cancelled = true
+    }
+  }, [account, loading])
+
+  if (loading || checking) return <LoadingScreen />
   if (!session) return <Navigate to="/login" replace />
   if (account && account.status === 'pending') {
     return <Navigate to="/pending" replace />
   }
+
+  // Locked: full-page lock screen, no children rendered
+  if (accessState === 'locked') {
+    return <LockedScreen />
+  }
+
+  // Grace: banner on top, children still render (read-only enforcement is per-page)
+  if (accessState === 'grace') {
+    return (
+      <div className="flex h-[100dvh] flex-col">
+        <GraceBanner
+          expiresAt={account?.access_expires_at ?? null}
+          graceDays={account?.lockout_grace_days ?? 7}
+        />
+        <div className="flex-1 overflow-hidden">{children}</div>
+      </div>
+    )
+  }
+
+  // Active: normal render
   return <>{children}</>
 }
 

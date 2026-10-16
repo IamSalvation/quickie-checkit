@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
+import { getAccountUsage, capStatus, type AccountUsage } from '../../lib/api/access'
+import UpgradePrompt from '../../components/layout/UpgradePrompt'
 import {
   listPrograms,
   archiveProgram,
@@ -36,6 +38,8 @@ export default function ProgramsPage() {
   const [statusFilter, setStatusFilter] = useState<ProgramStatus | 'all'>('active')
 
   const [showCreate, setShowCreate] = useState(false)
+  const [usage, setUsage] = useState<AccountUsage | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const load = useCallback(async () => {
     if (!account) return
@@ -57,6 +61,32 @@ export default function ProgramsPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  const loadUsage = useCallback(async () => {
+    if (!account) return
+    const { data } = await getAccountUsage(account.id)
+    setUsage(data)
+  }, [account])
+
+  useEffect(() => {
+    loadUsage()
+  }, [loadUsage])
+
+  function handleCreateClick() {
+    if (!usage) {
+      setShowCreate(true)
+      return
+    }
+    if (usage.state === 'grace') {
+      alert('Read-only mode: your account access has expired. Contact support to renew.')
+      return
+    }
+    if (capStatus(usage).programs) {
+      setShowUpgrade(true)
+      return
+    }
+    setShowCreate(true)
+  }
 
   async function handleArchive(p: Program) {
     if (!confirm(`Archive "${p.name}"? It will be hidden from active lists.`)) return
@@ -111,7 +141,7 @@ export default function ProgramsPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={handleCreateClick}
             className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
             Add {preset.labels.program}
@@ -172,7 +202,7 @@ export default function ProgramsPage() {
               </p>
               {!search && typeFilter === 'all' && statusFilter === 'active' && (
                 <button
-                  onClick={() => setShowCreate(true)}
+                  onClick={handleCreateClick}
                   className="mt-4 rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   Add your first {preset.labels.program.toLowerCase()}
@@ -195,7 +225,7 @@ export default function ProgramsPage() {
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-900">{p.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">
-                      {p.code ?? <span className="text-slate-300">â€”</span>}
+                      {p.code ?? <span className="text-slate-300">Ã¢â‚¬â€</span>}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {TYPE_LABELS[p.type]}
@@ -248,6 +278,15 @@ export default function ProgramsPage() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onCreated={() => load()}
+      />
+
+      <UpgradePrompt
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        resource="programs"
+        used={usage?.programs ?? 0}
+        cap={usage?.max_programs ?? 0}
+        accountName={account?.name ?? ''}
       />
     </div>
   )

@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
+import { getAccountUsage, capStatus, type AccountUsage } from '../../lib/api/access'
+import UpgradePrompt from '../../components/layout/UpgradePrompt'
 import {
   listContexts,
   CONTEXT_TYPE_LABELS,
@@ -32,7 +34,7 @@ function StatusBadge({ status }: { status: ContextStatus }) {
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return 'â€”'
+  if (!iso) return 'Ã¢â‚¬â€'
   const d = new Date(iso)
   return d.toLocaleString(undefined, {
     month: 'short',
@@ -57,6 +59,8 @@ export default function ContextsPage() {
   const [programs, setPrograms] = useState<Program[]>([])
 
   const [showCreate, setShowCreate] = useState(false)
+  const [usage, setUsage] = useState<AccountUsage | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   useEffect(() => {
     if (!account) return
@@ -86,6 +90,32 @@ export default function ContextsPage() {
     load()
   }, [load])
 
+  const loadUsage = useCallback(async () => {
+    if (!account) return
+    const { data } = await getAccountUsage(account.id)
+    setUsage(data)
+  }, [account])
+
+  useEffect(() => {
+    loadUsage()
+  }, [loadUsage])
+
+  function handleCreateClick() {
+    if (!usage) {
+      setShowCreate(true)
+      return
+    }
+    if (usage.state === 'grace') {
+      alert('Read-only mode: your account access has expired. Contact support to renew.')
+      return
+    }
+    if (capStatus(usage).contexts) {
+      setShowUpgrade(true)
+      return
+    }
+    setShowCreate(true)
+  }
+
   return (
     <div className="p-6">
       <div className="mx-auto max-w-6xl">
@@ -103,7 +133,7 @@ export default function ContextsPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={handleCreateClick}
             className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
             Add {preset.labels.context}
@@ -163,7 +193,7 @@ export default function ContextsPage() {
               </p>
               {!search && programFilter === 'all' && statusFilter === 'all' && (
                 <button
-                  onClick={() => setShowCreate(true)}
+                  onClick={handleCreateClick}
                   className="mt-4 rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   Add your first {preset.labels.context.toLowerCase()}
@@ -200,7 +230,7 @@ export default function ContextsPage() {
                       {c.program ? (
                         c.program.name
                       ) : (
-                        <span className="text-slate-300">â€”</span>
+                        <span className="text-slate-300">Ã¢â‚¬â€</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
@@ -229,6 +259,15 @@ export default function ContextsPage() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onCreated={() => load()}
+      />
+
+      <UpgradePrompt
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        resource="contexts"
+        used={usage?.contexts_this_month ?? 0}
+        cap={usage?.max_contexts ?? 0}
+        accountName={account?.name ?? ''}
       />
     </div>
   )

@@ -8,6 +8,7 @@ import {
   type Participant,
 } from '../../lib/api/participants'
 import CreateParticipantModal from './CreateParticipantModal'
+import BulkImportModal from './BulkImportModal'
 
 export default function ParticipantsPage() {
   const { account } = useAuth()
@@ -19,6 +20,7 @@ export default function ParticipantsPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [showBulk, setShowBulk] = useState(false)
 
   const load = useCallback(async () => {
     if (!account) return
@@ -75,12 +77,20 @@ export default function ParticipantsPage() {
             >
               Print badges
             </Link>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              Add {preset.labels.participant}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowBulk(true)}
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+              >
+                Bulk import
+              </button>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                Add {preset.labels.participant}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -146,7 +156,7 @@ export default function ParticipantsPage() {
                       {p.system_id}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {p.external_id ?? <span className="text-slate-300">â€”</span>}
+                      {p.external_id ?? <span className="text-slate-300">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</span>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -171,6 +181,12 @@ export default function ParticipantsPage() {
           setParticipants((prev) => [p, ...prev])
           setCount((c) => c + 1)
         }}
+      />
+
+      <BulkImportModal
+        open={showBulk}
+        onClose={() => setShowBulk(false)}
+        onImported={() => load()}
       />
     </div>
   )

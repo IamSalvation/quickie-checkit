@@ -393,7 +393,7 @@ export default function KioskScanPage() {
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <div className="text-sm font-semibold">Quickie CheckIt - Kiosk</div>
+        <div className="text-sm font-semibold">Quickie Pinkas - Kiosk</div>
         {deviceToken && (
           <button
             onClick={clearToken}

@@ -1,6 +1,6 @@
 # School Onboarding Walkthrough
 
-How to onboard a new school onto Quickie CheckIt. Should take 15-30 minutes for a small school (up to a few hundred students).
+How to onboard a new school onto Quickie Pinkas. Should take 15-30 minutes for a small school (up to a few hundred students).
 
 ## Prerequisites
 

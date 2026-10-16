@@ -27,7 +27,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           </svg>
         </button>
         <span className="lg:hidden text-sm font-semibold text-slate-900 truncate">
-          Quickie CheckIt
+          Quickie Pinkas
         </span>
       </div>
 

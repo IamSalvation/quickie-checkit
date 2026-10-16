@@ -1,6 +1,6 @@
 # Platform Admin Guide
 
-You are the platform admin -- the person who runs Quickie CheckIt. This doc covers everything you need to do outside the app (SQL, Supabase dashboard) plus how to use the Platform Console at /platform.
+You are the platform admin -- the person who runs Quickie Pinkas. This doc covers everything you need to do outside the app (SQL, Supabase dashboard) plus how to use the Platform Console at /platform.
 
 ## How to access the Platform Console
 

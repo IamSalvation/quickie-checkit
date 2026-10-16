@@ -1,4 +1,4 @@
-# Quickie CheckIt
+# Quickie Pinkas
 
 Presence tracking for everything that is not work. Schools, symposiums, bootcamps, hotels, events - anything where people check in to a session, stay, or context.
 

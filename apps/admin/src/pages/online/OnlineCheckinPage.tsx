@@ -195,7 +195,7 @@ export default function OnlineCheckinPage() {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-5">
-          <div className="text-sm font-bold text-slate-900">Quickie CheckIt</div>
+          <div className="text-sm font-bold text-slate-900">Quickie Pinkas</div>
         </div>
 
         {state.kind === 'loading' && (
@@ -415,7 +415,7 @@ export default function OnlineCheckinPage() {
         <p className="mt-6 text-center text-xs text-slate-400">
           Powered by{' '}
           <Link to="/" className="text-slate-500 hover:underline">
-            Quickie CheckIt
+            Quickie Pinkas
           </Link>
         </p>
       </div>

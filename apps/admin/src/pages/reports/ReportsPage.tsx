@@ -69,7 +69,7 @@ function PrintHeader({ title, subtitle }: PrintHeaderProps) {
         <div className="text-xs text-slate-700">{subtitle}</div>
       )}
       <div className="text-xs text-slate-500">
-        Quickie CheckIt - Generated {now}
+        Quickie Pinkas - Generated {now}
       </div>
     </div>
   )

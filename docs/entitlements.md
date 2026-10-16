@@ -1,6 +1,6 @@
 # Tier Entitlements (V1 vs V2)
 
-Quickie CheckIt has two subscription tiers. Tiers are managed per account (accounts.tier). Only a platform admin can change them.
+Quickie Pinkas has two subscription tiers. Tiers are managed per account (accounts.tier). Only a platform admin can change them.
 
 ## At a glance
 

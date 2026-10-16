@@ -50,7 +50,7 @@ export default function PlatformShell() {
               <span className="rounded bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-900">
                 Platform
               </span>
-              <span className="font-semibold truncate">Quickie CheckIt</span>
+              <span className="font-semibold truncate">Quickie Pinkas</span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <Link

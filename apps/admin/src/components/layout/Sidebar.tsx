@@ -55,7 +55,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       <div className="flex items-center justify-between px-4 py-5 border-b border-slate-800">
         <div className="min-w-0">
           <div className="text-base font-semibold truncate">
-            Quickie CheckIt
+            Quickie Pinkas
           </div>
           <div className="mt-1 text-xs text-slate-400 truncate">
             {account?.name ?? 'Loading...'}

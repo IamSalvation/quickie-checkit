@@ -66,7 +66,7 @@ export default function PlatformHome() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Platform admin</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Manage all accounts on Quickie CheckIt.
+          Manage all accounts on Quickie Pinkas.
         </p>
       </div>
 

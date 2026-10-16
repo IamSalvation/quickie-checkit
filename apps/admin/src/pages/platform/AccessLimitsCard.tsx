@@ -64,10 +64,10 @@ function progressPct(used: number, cap: number): number {
 }
 
 function progressColor(used: number, cap: number): string {
-  if (used > cap) return 'bg-red-500'
-  if (used === cap) return 'bg-amber-500'
-  if (progressPct(used, cap) > 75) return 'bg-amber-400'
-  return 'bg-emerald-500'
+  if (used > cap) return 'h-full bg-red-500'
+  if (used === cap) return 'h-full bg-amber-500'
+  if (progressPct(used, cap) > 75) return 'h-full bg-amber-400'
+  return 'h-full bg-emerald-500'
 }
 
 function fieldLabel(f: string): string {
@@ -199,7 +199,7 @@ export default function AccessLimitsCard({
                   </div>
                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={'h-full ' + progressColor(used, cap)}
+                      className={progressColor(used, cap)}
                       style={{ width: progressPct(used, cap) + '%' }}
                     />
                   </div>

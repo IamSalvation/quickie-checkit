@@ -287,7 +287,7 @@ export async function updateAccountLimits(
     return { error: readErr?.message ?? 'Account not found' }
   }
 
-  // 2. Compute diffs
+  // 2. Compute diffs (normalize dates so identical timestamps in different formats are not flagged)
   const auditRows: {
     account_id: string
     changed_by: string
@@ -295,6 +295,15 @@ export async function updateAccountLimits(
     old_value: string | null
     new_value: string | null
   }[] = []
+
+  const normalize = (v: unknown): string | null => {
+    if (v === null || v === undefined) return null
+    if (v instanceof Date) return v.toISOString()
+    const s = String(v)
+    const d = new Date(s)
+    if (!isNaN(d.getTime())) return d.toISOString()
+    return s
+  }
 
   const fields: (keyof AccountLimitsUpdate)[] = [
     'max_participants',
@@ -309,8 +318,8 @@ export async function updateAccountLimits(
     if (updates[f] === undefined) continue
     const oldVal = (current as Record<string, unknown>)[f]
     const newVal = updates[f]
-    const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal)
-    const newStr = newVal === null || newVal === undefined ? null : String(newVal)
+    const oldStr = normalize(oldVal)
+    const newStr = normalize(newVal)
     if (oldStr !== newStr) {
       auditRows.push({
         account_id: accountId,

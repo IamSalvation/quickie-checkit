@@ -86,7 +86,7 @@ export default function StorageCleanupCard({
       (days === 0 ? 'everything' : days + ' days') +
       '?\n\n' +
       'This removes the photo files from storage and clears photo_url on those records. ' +
-      'Attendance records themselves are preserved â€” only the selfie images are deleted.\n\n' +
+      'Attendance records themselves are preserved Ã¢â‚¬â€ only the selfie images are deleted.\n\n' +
       'Enrollment photos are NEVER deleted.\n\n' +
       'This cannot be undone.'
 
@@ -131,7 +131,7 @@ export default function StorageCleanupCard({
   if (loading) {
     return (
       <div className="rounded-lg bg-white p-6 shadow">
-        <p className="text-sm text-slate-500">Loading storageâ€¦</p>
+        <p className="text-sm text-slate-500">Loading storageÃ¢â‚¬Â¦</p>
       </div>
     )
   }
@@ -194,7 +194,7 @@ export default function StorageCleanupCard({
               ~{formatBytes(usage.enrollment_photo_bytes_estimate)} (est.)
             </div>
             <div className="mt-1 text-[11px] text-emerald-700">
-              Protected â€” never deleted
+              Protected Ã¢â‚¬â€ never deleted
             </div>
           </div>
         </div>
@@ -259,12 +259,12 @@ export default function StorageCleanupCard({
             <div className="font-medium">Cleanup complete</div>
             <div className="mt-1">
               Deleted {lastResult.deleted} photo
-              {lastResult.deleted === 1 ? '' : 's'} Â· ~
+              {lastResult.deleted === 1 ? '' : 's'} Ã‚Â- ~
               {formatBytes(lastResult.bytes_freed_estimate)} freed (est.)
             </div>
             {lastResult.failed > 0 && (
               <div className="mt-1 text-red-700">
-                {lastResult.failed} failed â€”{' '}
+                {lastResult.failed} failed Ã¢â‚¬â€{' '}
                 {lastResult.errors.slice(0, 3).join('; ')}
                 {lastResult.errors.length > 3 && ' ...'}
               </div>
@@ -280,7 +280,7 @@ export default function StorageCleanupCard({
 
         {isPlatformAdmin && (
           <p className="text-[11px] text-slate-400">
-            Platform admin action â€” will appear in your audit log.
+            Platform admin action Ã¢â‚¬â€ will appear in your audit log.
           </p>
         )}
       </div>

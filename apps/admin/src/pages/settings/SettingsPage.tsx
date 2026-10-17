@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPreset } from '../../lib/presets'
 import { supabase } from '../../lib/supabase'
+import StorageCleanupCard from '../../components/storage/StorageCleanupCard'
 
 type SaveState = 'idle' | 'saving' | 'success' | 'error'
 
@@ -251,6 +252,11 @@ export default function SettingsPage() {
             </button>
           </div>
         </section>
+
+        {/* Storage */}
+        <div className="mt-6">
+          {account && <StorageCleanupCard accountId={account.id} />}
+        </div>
 
         {/* Account */}
         <section className="mt-6 rounded-lg bg-white p-5 shadow">

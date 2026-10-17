@@ -15,6 +15,7 @@ import {
 } from '../../lib/api/platform'
 import AccessLimitsCard from './AccessLimitsCard'
 import AccessLimitsEditModal from './AccessLimitsEditModal'
+import StorageCleanupCard from '../../components/storage/StorageCleanupCard'
 
 export default function PlatformAccountDetail() {
   const { id } = useParams<{ id: string }>()
@@ -264,6 +265,10 @@ export default function PlatformAccountDetail() {
           accountName={account.name}
           onEdit={() => setShowLimitsEdit(true)}
         />
+      </div>
+
+      <div className="mt-6">
+        <StorageCleanupCard accountId={account.id} isPlatformAdmin />
       </div>
 
       <div className="mt-6 overflow-hidden rounded-lg bg-white shadow">

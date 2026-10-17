@@ -6,8 +6,10 @@ export default function PendingApproval() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow p-8 text-center">
-        <img src="/logo.png" alt="Quickie Pinkas" className="mx-auto h-16 w-auto mb-4" /><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-          <span className="text-2xl">Ã¢ÂÂ³</span>
+        <img src="/logo.png" alt="Quickie Pinkas" className="mx-auto h-16 w-auto mb-4" />
+
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+          <span className="text-xs font-bold text-amber-700">WAIT</span>
         </div>
 
         <h1 className="mt-4 text-2xl font-bold text-slate-900">

@@ -225,7 +225,7 @@ export default function ProgramsPage() {
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-900">{p.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">
-                      {p.code ?? <span className="text-slate-300">Ã¢â‚¬â€</span>}
+                      {p.code ?? <span className="text-slate-300">-</span>}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {TYPE_LABELS[p.type]}

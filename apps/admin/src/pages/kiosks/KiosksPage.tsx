@@ -15,7 +15,7 @@ import { getAccountUsage, capStatus, type AccountUsage } from '../../lib/api/acc
 import UpgradePrompt from '../../components/layout/UpgradePrompt'
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'
+  if (!iso) return '-'
   return new Date(iso).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -151,7 +151,7 @@ export default function KiosksPage() {
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(
       () => alert('Copied to clipboard'),
-      () => alert('Copy failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â long-press or right-click to copy manually')
+      () => alert('Copy failed - long-press or right-click to copy manually')
     )
   }
 
@@ -322,7 +322,7 @@ export default function KiosksPage() {
                         <tr key={k.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-slate-900">{k.label}</td>
                           <td className="px-4 py-3 text-slate-600">
-                            {k.location ?? <span className="text-slate-300">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</span>}
+                            {k.location ?? <span className="text-slate-300">-</span>}
                           </td>
                           <td className="px-4 py-3">
                             {k.status === 'active' ? (

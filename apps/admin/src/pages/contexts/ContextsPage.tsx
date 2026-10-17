@@ -34,7 +34,7 @@ function StatusBadge({ status }: { status: ContextStatus }) {
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return 'Ã¢â‚¬â€'
+  if (!iso) return '-'
   const d = new Date(iso)
   return d.toLocaleString(undefined, {
     month: 'short',
@@ -230,7 +230,7 @@ export default function ContextsPage() {
                       {c.program ? (
                         c.program.name
                       ) : (
-                        <span className="text-slate-300">Ã¢â‚¬â€</span>
+                        <span className="text-slate-300">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">

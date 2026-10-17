@@ -48,6 +48,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
     { to: '/reports', label: 'Reports', end: false },
     { to: '/messages', label: 'Messages', end: false, badge: unread },
     { to: '/settings', label: 'Settings', end: false },
+    { to: '/billing', label: 'Billing', end: false },
   ]
 
   return (

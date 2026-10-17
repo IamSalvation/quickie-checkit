@@ -27,6 +27,8 @@ import ReportsPage from './pages/reports/ReportsPage'
 import GradesPage from './pages/grades/GradesPage'
 import CaComponentsPage from './pages/grades/CaComponentsPage'
 import SettingsPage from './pages/settings/SettingsPage'
+import BillingPage from './pages/billing/BillingPage'
+import BillingCallbackPage from './pages/billing/BillingCallbackPage'
 import MessagesPage from './pages/messages/MessagesPage'
 import PlatformRoute from './pages/platform/PlatformRoute'
 import PlatformHome from './pages/platform/PlatformHome'
@@ -196,6 +198,8 @@ function AppRoutes() {
         <Route path="/grades/settings" element={<CaComponentsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/billing" element={<BillingPage />} />
+        <Route path="/billing/callback" element={<BillingCallbackPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

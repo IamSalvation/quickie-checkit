@@ -25,7 +25,7 @@ export interface Account {
   created_at: string
   updated_at: string
 
-  // Access limits & time (added in migration 030)
+  // Access limits & time (migration 030)
   max_participants: number
   max_programs: number
   max_contexts: number
@@ -34,6 +34,16 @@ export interface Account {
   lockout_grace_days: number
   trial_started_at: string | null
   limits_overridden: boolean
+
+  // Billing (migration 033)
+  paystack_customer_code: string | null
+  paystack_subscription_code: string | null
+  paystack_plan_code: string | null
+  billing_type: 'trial' | 'subscription' | 'one_time' | 'expired'
+  subscription_status: 'none' | 'active' | 'past_due' | 'canceled' | 'incomplete'
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  paid_at: string | null
 }
 
 export interface Operator {

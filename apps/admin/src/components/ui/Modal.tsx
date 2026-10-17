@@ -53,7 +53,7 @@ export default function Modal({
               className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
               aria-label="Close"
             >
-              ×
+              X
             </button>
           </div>
         )}

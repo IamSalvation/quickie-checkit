@@ -22,10 +22,10 @@ export default function GraceBanner({ expiresAt, graceDays }: Props) {
 
   const expiredLabel = expiresAt
     ? new Date(expiresAt).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
     : 'earlier'
 
   return (
@@ -37,7 +37,7 @@ export default function GraceBanner({ expiresAt, graceDays }: Props) {
 
         <div className="flex-1 text-sm text-amber-900">
           <div className="font-medium">
-            Read-only mode — {account?.name ?? 'Your account'} access expired on{' '}
+            Read-only mode - {account?.name ?? 'Your account'} access expired on{' '}
             {expiredLabel}
           </div>
           <div className="mt-0.5 text-xs text-amber-800">

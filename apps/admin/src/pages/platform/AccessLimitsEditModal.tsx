@@ -148,7 +148,7 @@ export default function AccessLimitsEditModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={'Edit access & limits — ' + accountName}
+      title={'Edit access & limits - ' + accountName}
     >
       {loading ? (
         <div className="py-6 text-center text-sm text-slate-500">

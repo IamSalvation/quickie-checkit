@@ -173,7 +173,7 @@ export default function BulkImportModal({ open, onClose, onImported }: Props) {
           {parsed.headers.length > 0 && (
             <div className="rounded bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
               Detected {parsed.rows.length} row
-              {parsed.rows.length === 1 ? '' : 's'} · {parsed.headers.length}{' '}
+              {parsed.rows.length === 1 ? '' : 's'} - {parsed.headers.length}{' '}
               column{parsed.headers.length === 1 ? '' : 's'}
             </div>
           )}
@@ -264,7 +264,7 @@ export default function BulkImportModal({ open, onClose, onImported }: Props) {
                   onChange={(e) => setExtCol(Number(e.target.value))}
                   className="block w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
                 >
-                  <option value={-1}>— Ignore —</option>
+                  <option value={-1}>- Ignore -</option>
                   {parsed.headers.map((h, i) => (
                     <option key={i} value={i}>
                       {h}
@@ -291,10 +291,10 @@ export default function BulkImportModal({ open, onClose, onImported }: Props) {
                   {parsed.rows.slice(0, 5).map((r, i) => (
                     <tr key={i}>
                       <td className="px-3 py-2 text-slate-900">
-                        {nameCol >= 0 ? r[nameCol] : '—'}
+                        {nameCol >= 0 ? r[nameCol] : '-'}
                       </td>
                       <td className="px-3 py-2 text-slate-600 font-mono">
-                        {extCol >= 0 ? r[extCol] || '—' : '—'}
+                        {extCol >= 0 ? r[extCol] || '-' : '-'}
                       </td>
                     </tr>
                   ))}

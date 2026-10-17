@@ -30,7 +30,7 @@ export default function KioskSetupPage() {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-lg bg-white p-8 text-center">
-        <div className="text-4xl">🎫</div>
+        <div className="text-sm font-bold uppercase tracking-wider text-slate-500">Kiosk</div>
         <h1 className="mt-4 text-xl font-bold text-slate-900">
           Kiosk setup
         </h1>

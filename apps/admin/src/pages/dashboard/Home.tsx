@@ -73,7 +73,7 @@ export default function DashboardHome() {
           {label}
         </div>
         <div className="mt-1 text-2xl font-semibold text-slate-900">
-          {loading ? 'â€”' : value}
+          {loading ? '-' : value}
         </div>
         <div className="mt-1 text-xs text-slate-400">
           {value === 0 ? hint : `View ${label.toLowerCase()}`}

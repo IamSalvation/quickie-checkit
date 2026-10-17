@@ -84,8 +84,8 @@ export default function BillingCallbackPage() {
 
         {status === 'success' && (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl">
-              ✓
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
+              OK
             </div>
             <h1 className="mt-4 text-xl font-bold text-emerald-700">
               Payment successful
@@ -104,8 +104,8 @@ export default function BillingCallbackPage() {
 
         {status === 'pending' && (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
-              ⏱
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-700">
+              ...
             </div>
             <h1 className="mt-4 text-xl font-bold text-amber-700">
               Payment is taking longer than expected
@@ -134,8 +134,8 @@ export default function BillingCallbackPage() {
 
         {status === 'failed' && (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl">
-              ✗
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-sm font-bold text-red-700">
+              X
             </div>
             <h1 className="mt-4 text-xl font-bold text-red-700">
               Payment failed

@@ -35,17 +35,17 @@ export default function UpgradePrompt({
   )
   const mailBody = encodeURIComponent(
     'Hi,\n\n' +
-      'Our account "' +
-      accountName +
-      '" has reached its ' +
-      label +
-      ' limit (' +
-      used +
-      ' of ' +
-      cap +
-      ').\n\n' +
-      'Please increase our limit or upgrade our plan.\n\n' +
-      'Thanks.'
+    'Our account "' +
+    accountName +
+    '" has reached its ' +
+    label +
+    ' limit (' +
+    used +
+    ' of ' +
+    cap +
+    ').\n\n' +
+    'Please increase our limit or upgrade our plan.\n\n' +
+    'Thanks.'
   )
   const mailtoUrl =
     'mailto:' + CONTACT_EMAIL + '?subject=' + mailSubject + '&body=' + mailBody
@@ -66,7 +66,7 @@ export default function UpgradePrompt({
         <div className="rounded bg-slate-50 border border-slate-200 px-3 py-3 text-xs text-slate-700">
           <div className="font-medium text-slate-900">What happens next?</div>
           <ul className="mt-1.5 space-y-1 list-disc pl-4">
-            <li>Your existing data is safe — nothing gets deleted.</li>
+            <li>Your existing data is safe - nothing gets deleted.</li>
             <li>
               You can still view, edit, and export everything you already have.
             </li>

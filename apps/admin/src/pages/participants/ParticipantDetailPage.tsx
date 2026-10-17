@@ -105,6 +105,15 @@ export default function ParticipantDetailPage() {
     window.print()
   }
 
+  function handleCopyLink() {
+    if (!participant) return
+    const url = window.location.origin + '/s/' + participant.system_id
+    navigator.clipboard.writeText(url).then(
+      () => alert('Student record link copied:\n\n' + url),
+      () => alert('Copy failed. Link:\n\n' + url)
+    )
+  }
+
   async function handleRemoveFace() {
     if (!participant) return
     if (
@@ -255,6 +264,12 @@ export default function ParticipantDetailPage() {
                 className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
               >
                 Print badge
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+              >
+                Copy record link
               </button>
               <button
                 onClick={handleDelete}

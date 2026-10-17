@@ -225,9 +225,15 @@ export default function KioskScanPage() {
       }
     }
 
-    async function handleScan(systemId: string) {
+    async function handleScan(rawScan: string) {
       if (processingRef.current) return
       processingRef.current = true
+
+      // Extract system_id if QR contains a URL (new format)
+      let systemId = rawScan
+      if (rawScan.includes('/s/')) {
+        systemId = rawScan.split('/s/').pop() ?? rawScan
+      }
 
       const { data, error } = await kioskCheckin(deviceToken!, systemId)
       if (error || !data) {

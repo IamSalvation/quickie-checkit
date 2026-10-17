@@ -33,7 +33,7 @@ export default function ParticipantBadge({
           alt="Quickie Pinkas"
           className={forPrint ? 'h-16 w-auto' : 'h-12 w-auto'}
         />
-        <QRCodeSVG value={participant.system_id} size={qrSize} level="M" />
+        <QRCodeSVG value={window.location.origin + "/s/" + participant.system_id} size={qrSize} level="M" />
       </div>
     )
   }

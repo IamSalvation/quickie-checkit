@@ -29,6 +29,7 @@ import CaComponentsPage from './pages/grades/CaComponentsPage'
 import SettingsPage from './pages/settings/SettingsPage'
 import BillingPage from './pages/billing/BillingPage'
 import BillingCallbackPage from './pages/billing/BillingCallbackPage'
+import StudentRecordPage from './pages/public/StudentRecordPage'
 import MessagesPage from './pages/messages/MessagesPage'
 import PlatformRoute from './pages/platform/PlatformRoute'
 import PlatformHome from './pages/platform/PlatformHome'
@@ -202,6 +203,7 @@ function AppRoutes() {
         <Route path="/billing/callback" element={<BillingCallbackPage />} />
       </Route>
 
+      <Route path="/s/:systemId" element={<StudentRecordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
